@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <title>تعديل الفترة</title>
+    <style>
+        .period-form {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .alert {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <div class="period-form">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>تعديل الفترة</h1>
+                <a href="/user/period/<%= period._id %>" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> العودة إلى التفاصيل
+                </a>
+            </div>
+
+            <% if (locals.error) { %>
+                <div class="alert alert-danger" role="alert">
+                    <%= error %>
+                </div>
+            <% } %>
+
+            <div class="card">
+                <div class="card-body">
+                    <form action="/leader/period/<%= period._id %>" method="POST" onsubmit="return validateDates()">
+                        <div class="mb-3">
+                            <label class="form-label">اسم القائد</label>
+                            <input type="text" class="form-control" name="leaderName" 
+                                   value="<%= period.leaderName %>" required>
+                        </div>
+                        
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">تاريخ البدء</label>
+                                <input type="date" class="form-control" name="startDate" 
+                                       value="<%= period.startDate.toISOString().split('T')[0] %>" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">تاريخ الانتهاء</label>
+                                <input type="date" class="form-control" name="endDate" 
+                                       value="<%= period.endDate.toISOString().split('T')[0] %>" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">الوصف</label>
+                            <textarea class="form-control" name="description" rows="3"><%= period.description || '' %></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="isActive" 
+                                       <%= period.isActive ? 'checked' : '' %>>
+                                <label class="form-check-label">الفترة النشطة</label>
+                            </div>
+                            <div class="form-text">يمكن أن تكون هناك فترة نشطة واحدة فقط في كل مرة.</div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg"></i> تحديث الفترة
+                            </button>
+                        </div>
+                        <% if (!period.isActive) { %>
+                            <div class="d-grid gap-2 mt-3">
+                                <button type="button" class="btn btn-danger" onclick="confirmDeletePeriod()">
+                                    <i class="bi bi-trash"></i> حذف الفترة
+                                </button>
+                            </div>
+                            <form id="deletePeriodForm" action="/leader/period/<%= period._id %>/delete" method="POST" style="display:none"></form>
+                        <% } else { %>
+                            <div class="d-grid gap-2 mt-3">
+                                <button type="button" class="btn btn-danger" onclick="showActiveRefusePopup()">
+                                    <i class="bi bi-trash"></i> حذف الفترة
+                                </button>
+                            </div>
+                        <% } %>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Period Statistics -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">إحصائيات الفترة</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <div class="border rounded p-3">
+                                <div class="text-muted mb-1">إجمالي الوجبات</div>
+                                <div class="h4 mb-0"><%= periodStats.totalMeals %></div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="border rounded p-3">
+                                <div class="text-muted mb-1">التكلفة الإجمالية</div>
+                                <div class="h4 mb-0">$<%= periodStats.totalCost.toFixed(2) %></div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="border rounded p-3">
+                                <div class="text-muted mb-1">التكاليف العادية</div>
+                                <div class="h4 mb-0">$<%= periodStats.totalNormalCost.toFixed(2) %></div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="border rounded p-3">
+                                <div class="text-muted mb-1">التكاليف الأخرى</div>
+                                <div class="h4 mb-0">$<%= periodStats.totalOthersCost.toFixed(2) %></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function validateDates() {
+            const startDate = new Date(document.querySelector('input[name="startDate"]').value);
+            const endDate = new Date(document.querySelector('input[name="endDate"]').value);
+            
+            if (startDate > endDate) {
+                alert('يجب أن يكون تاريخ الانتهاء بعد تاريخ البدء');
+                return false;
+            }
+            return true;
+        }
+        function confirmDeletePeriod() {
+            if (confirm('هل أنت متأكد أنك تريد حذف هذه الفترة؟ لا يمكن التراجع عن هذا الإجراء.')) {
+                document.getElementById('deletePeriodForm').submit();
+            }
+        }
+        function showActiveRefusePopup() {
+            alert('لا يمكنك حذف فترة نشطة. يرجى إلغاء تنشيطها أولاً.');
+        }
+    </script>
+</body>
+</html>

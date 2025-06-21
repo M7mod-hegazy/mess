@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <title>تفاصيل الفترة</title>
+    <style>
+        .meal-summary {
+            break-inside: avoid;
+            transition: transform 0.2s;
+        }
+        .meal-summary:hover {
+            transform: translateY(-2px);
+        }
+        .cost-pill {
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.875rem;
+            background: rgba(0,0,0,0.05);
+        }
+        .stats-card {
+            transition: all 0.3s ease;
+        }
+        .stats-card:hover {
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+        .period-header {
+            background: rgba(var(--bs-primary-rgb), 0.03);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+    </style>
+    <!-- Add Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12 col-lg-10 offset-lg-1">
+                <!-- Period Header -->
+                <div class="period-header">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h1 class="mb-0">
+                        فترة <%= period.leaderName %>
+                        <% if (period.isActive) { %>
+                            <span class="badge bg-success">نشط</span>
+                        <% } %>
+                    </h1>
+                    <% if (typeof userId !== 'undefined' && userId && period.leaderId && period.leaderId.toString() === userId.toString()) { %>
+                        <a href="/leader/period/<%= period._id %>/edit" class="btn btn-outline-primary">
+                            <i class="bi bi-pencil"></i> تعديل الفترة
+                        </a>
+                    <% } %>
+                </div>
+                
+                <div class="mb-4">
+                    <div class="text-muted">
+                        <%= new Date(period.startDate).toLocaleDateString() %> - 
+                        <%= new Date(period.endDate).toLocaleDateString() %>
+                    </div>
+                    <% if (period.description) { %>
+                        <div class="mt-2"><%= period.description %></div>
+                    <% } %>
+                </div>
+                <!-- Meals Filter (above meals grid only) -->
+                <div class="row mb-3">
+                    <div class="col-12 col-lg-7 offset-lg-5">
+                        <form id="mealsFilterForm" class="d-flex align-items-end gap-2">
+                            <div>
+                                <label for="filterDate" class="form-label mb-1">التاريخ</label>
+                                <input type="date" class="form-control" id="filterDate">
+                            </div>
+                            <div>
+                                <label for="filterType" class="form-label mb-1">نوع الوجبة</label>
+                                <select class="form-select" id="filterType">
+                                    <option value="">الكل</option>
+                                    <option value="breakfast">فطور</option>
+                                    <option value="lunch">غداء</option>
+                                    <option value="dinner">عشاء</option>
+                                    <option value="other">أخرى</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">تصفية</button>
+                            <button type="button" class="btn btn-outline-secondary" id="resetMealsFilter">إعادة تعيين</button>
+                        </form>
+                    </div>
+                </div>
+                <div class="row g-4 align-items-stretch">
+                    <!-- Cost Breakdown -->
+                    <div class="col-12 col-lg-4 d-flex flex-column">
+                        <div class="stats-card h-100 p-3">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="mb-0">عرض تفاصيل التكلفة</h5>
+                                <button class="btn btn-outline-secondary btn-sm" id="download-breakdown"><i class="bi bi-download"></i> تنزيل CSV</button>
+                            </div>
+                            <table class="table table-striped mb-0" id="breakdown-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>المشارك</th>
+                                        <th>التكاليف العادية</th>
+                                        <th>التكاليف الأخرى</th>
+                                        <th>إجمالي الحصة</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% Object.entries(periodStats.participantStats).forEach(([user, data]) => { %>
+                                    <tr>
+                                        <td>
+                                            <%= user %>
+                                            <div class="text-muted small">(<%= data.mealCount %> وجبات)</div>
+                                        </td>
+                                        <td>$<%= data.normalCosts.toFixed(2) %></td>
+                                        <td>$<%= data.otherCosts.toFixed(2) %></td>
+                                        <td>$<%= data.totalCosts.toFixed(2) %></td>
+                                    </tr>
+                                    <% }); %>
+                                </tbody>
+                                <tfoot class="table-light">
+                                    <tr>
+                                        <th>الإجمالي</th>
+                                        <th>$<%= periodStats.totalNormalCost.toFixed(2) %></th>
+                                        <th>$<%= periodStats.totalOthersCost.toFixed(2) %></th>
+                                        <th>$<%= periodStats.totalCost.toFixed(2) %></th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                    <!-- Divider for large screens -->
+                    <div class="d-none d-lg-block col-lg-1" style="border-right:1px solid #e9ecef;height:auto;"></div>
+                    <!-- Meals Grid with horizontal scroll -->
+                    <div class="col-12 col-lg-7">
+                        <div class="overflow-auto" style="white-space:nowrap; max-width:100vw;">
+                            <div class="row row-cols-1 row-cols-md-2 g-4 flex-nowrap" id="mealsGrid">
+                                <% meals.forEach(meal => { %>
+                                <div class="col meal-card" data-meal-date="<%= meal.date.toISOString().slice(0,10) %>" data-meal-type="<%= meal.type %>" style="display:inline-block; float:none;">
+                                    <div class="card h-100 meal-summary shadow-sm" id="meal-<%= meal._id %>">
+                                        <div class="card-header bg-transparent border-bottom-0 d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <span class="badge rounded-pill text-bg-<%= 
+                                                    meal.type === 'breakfast' ? 'warning' : 
+                                                    meal.type === 'lunch' ? 'info' : 
+                                                    meal.type === 'dinner' ? 'primary' : 
+                                                    'secondary' %>">
+                                                    <i class="bi bi-<%= 
+                                                        meal.type === 'breakfast' ? 'sun' : 
+                                                        meal.type === 'lunch' ? 'brightness-high' : 
+                                                        meal.type === 'dinner' ? 'moon' : 
+                                                        'clock' %>"></i>
+                                                    <%= meal.type.charAt(0).toUpperCase() + meal.type.slice(1) %>
+                                                </span>
+                                                <small class="text-muted ms-2">
+                                                    <%= meal.date.toLocaleDateString() %>
+                                                </small>
+                                            </div>
+                                            <button class="btn btn-outline-secondary btn-sm download-meal" data-meal-id="meal-<%= meal._id %>"><i class="bi bi-download"></i> تنزيل</button>
+                                        </div>
+                                        <div class="card-body">
+                                            <h5 class="card-title mb-3"><%= meal.name %></h5>
+                                            <div class="mb-3">
+                                                <h6 class="card-subtitle mb-2 text-muted">
+                                                    <i class="bi bi-basket me-1"></i> المكونات
+                                                </h6>
+                                                <ul class="list-group mb-2">
+                                                    <% meal.ingredients.forEach(ing => { %>
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        <span>
+                                                            <strong><%= ing.name %></strong>
+                                                            <span class="text-muted small ms-2">(<%= ing.ingredientType %>)</span>
+                                                        </span>
+                                                        <span class="badge <%= ing.ingredientType === 'other' ? 'text-bg-info' : 'text-bg-primary' %>">$<%= ing.price.toFixed(2) %></span>
+                                                    </li>
+                                                    <% }); %>
+                                                </ul>
+                                            </div>
+                                            <!-- Meal Cost Summary -->
+                                            <div class="mb-3">
+                                                <h6 class="card-subtitle mb-2 text-muted">
+                                                    <i class="bi bi-cash me-1"></i> تكلفة الوجبة
+                                                </h6>
+                                                <div class="d-flex gap-2 flex-wrap">
+                                                    <span class="badge bg-secondary">عادي: $<%= meal.normalTotalCost.toFixed(2) %></span>
+                                                    <span class="badge bg-info">أخرى: $<%= meal.otherTotalCost.toFixed(2) %></span>
+                                                    <span class="badge bg-primary">الإجمالي: $<%= meal.totalCost.toFixed(2) %></span>
+                                                </div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <h6 class="card-subtitle mb-2 text-muted">
+                                                    <i class="bi bi-people me-1"></i> المشاركون
+                                                </h6>
+                                                <ul class="list-group mb-2">
+                                                    <% meal.participants.forEach(p => { 
+                                                        const normalShare = p.normalShare || (meal.normalTotalCost / meal.participants.length);
+                                                    %>
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        <span><%= p.name %></span>
+                                                        <span class="badge bg-secondary">$<%= normalShare.toFixed(2) %></span>
+                                                    </li>
+                                                    <% }); %>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <% }); %>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script>
+        // Meals Filter
+        document.getElementById('mealsFilterForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const dateValue = document.getElementById('filterDate').value;
+            const typeValue = document.getElementById('filterType').value;
+
+            document.querySelectorAll('.meal-card').forEach(card => {
+                const mealDate = card.dataset.mealDate;
+                const mealType = card.dataset.mealType;
+                
+                const dateMatch = !dateValue || mealDate === dateValue;
+                const typeMatch = !typeValue || mealType === typeValue;
+
+                if (dateMatch && typeMatch) {
+                    card.style.display = 'inline-block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+        
+        document.getElementById('resetMealsFilter').addEventListener('click', function() {
+            document.getElementById('filterDate').value = '';
+            document.getElementById('filterType').value = '';
+            document.querySelectorAll('.meal-card').forEach(card => {
+                card.style.display = 'inline-block';
+            });
+        });
+
+        // Download Breakdown
+        document.getElementById('download-breakdown').addEventListener('click', function() {
+            let csv = 'المشارك,التكاليف العادية,التكاليف الأخرى,إجمالي الحصة\n';
+            document.querySelectorAll('#breakdown-table tbody tr').forEach(tr => {
+                const cells = tr.querySelectorAll('td');
+                const user = cells[0].innerText.split('\n')[0];
+                const normal = cells[1].innerText;
+                const other = cells[2].innerText;
+                const total = cells[3].innerText;
+                csv += `"${user}","${normal}","${other}","${total}"\n`;
+            });
+            const link = document.createElement('a');
+            link.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+            link.download = 'cost-breakdown.csv';
+            link.click();
+        });
+
+        // Download Meal Summary
+        document.querySelectorAll('.download-meal').forEach(button => {
+            button.addEventListener('click', function() {
+                const mealId = this.dataset.mealId;
+                const mealElement = document.getElementById(mealId);
+
+                if (mealElement) {
+                    html2canvas(mealElement).then(canvas => {
+                        const mealCard = mealElement.closest('.meal-card');
+                        const date = mealCard.dataset.mealDate;
+                        const type = mealCard.dataset.mealType;
+                        
+                        const link = document.createElement('a');
+                        link.href = canvas.toDataURL();
+                        link.download = `${date} - ${type}.png`;
+                        link.click();
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>    
+    <title>لوحة تحكم القائد</title>
+    <style>
+        .accordion-button:not(.collapsed) {
+            background-color: rgba(var(--bs-primary-rgb), 0.05);
+        }
+        .period-card {
+            transition: all 0.2s ease;   
+        }
+        .period-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+        }
+        .alert {
+            margin-bottom: 20px;
+        }
+        .fade-out {
+            animation: fadeOut 5s forwards;
+        }
+        @keyframes fadeOut {
+            0% { opacity: 1; }
+            70% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        .participants-accordion {
+            border: 1px solid #e5e5e5;
+            border-radius: 0.5rem;
+            margin-bottom: 1.5rem;
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        }
+        .participants-accordion-header {
+            padding: 1rem 1.25rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 500;
+            border-bottom: 1px solid #eee;
+            user-select: none;
+        }
+        .participants-accordion-header .icon {
+            transition: transform 0.2s;
+            font-size: 1.25rem;
+        }
+        .participants-accordion-header.open .icon {
+            transform: rotate(180deg);
+        }
+        .participants-accordion-body {
+            display: none;
+            padding: 1rem 1.25rem;
+            animation: fadeIn 0.3s;
+        }
+        .participants-accordion-body.open {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @media (max-width: 500px) {
+            .participants-sidebar { width: 100vw; }
+        }
+        .custom-navbar {
+            background: #fff;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 2rem;
+            padding: 0.5rem 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .custom-navbar-brand {
+            font-weight: bold;
+            font-size: 1.25rem;
+            color: #333;
+            text-decoration: none;
+        }
+        .custom-navbar-links {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+        .custom-navbar-link {
+            color: #333;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        .custom-navbar-link:hover {
+            color: #0d6efd;
+        }
+        .custom-navbar-toggler {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 2rem;
+            cursor: pointer;
+            color: #333;
+        }
+        @media (max-width: 991px) {
+            .custom-navbar-links {
+                display: none;
+                flex-direction: column;
+                gap: 1rem;
+                background: #fff;
+                position: absolute;
+                top: 56px;
+                left: 0;
+                width: 100vw;
+                padding: 1rem 0;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+                z-index: 1000;
+            }
+            .custom-navbar-links.open {
+                display: flex;
+            }
+            .custom-navbar-toggler {
+                display: block;
+            }
+        }
+    </style>
+    <!-- Add Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Add Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+</head>
+<body>
+    <div class="container-fluid py-4">
+      <div class="row">
+        <div class="col-12 col-lg-10 offset-lg-1">
+            <h1 class="mb-4">لوحة تحكم القائد</h1>
+            
+            <!-- Error/Success Messages -->
+            <% if (locals.error) { %>
+                <div class="alert alert-danger fade-out" role="alert"><%= error %></div>
+            <% } %>
+            <% if (locals.success) { %>
+                <div class="alert alert-success fade-out" role="alert"><%= success %></div>
+            <% } %>
+
+           
+
+            <div class="row g-4">
+                <!-- Left Column: Add Meal and Current Period Meals -->
+                <div class="col-lg-8">
+                    <!-- Add New Meal Section -->
+                    <% if (periods && periods.length > 0) { %>
+                        <div class="card mb-4">
+                            <div class="card-header"><h5 class="mb-0">إضافة وجبة جديدة</h5></div>
+                            <div class="card-body">
+                                <form action="/leader/meal" method="POST" id="mealForm">
+                                    <div class="row g-3 mb-3">
+                                        <div class="col-md-12">
+                                            <label for="periodId" class="form-label">الفترة</label>
+                                            <select id="periodId" name="periodId" class="form-select" required>
+                                                <% periods.forEach(period => { %>
+                                                    <option value="<%= period._id %>" <%= period.isActive ? 'selected' : '' %>>فترة <%= period.leaderName %> (<%= new Date(period.startDate).toLocaleDateString() %> - <%= new Date(period.endDate).toLocaleDateString() %>)</option>
+                                                <% }); %>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="row g-3 mb-4">
+                                        <div class="col-md-6">
+                                            <label class="form-label">التاريخ</label>
+                                            <input type="date" class="form-control" name="date" id="mealDateInput" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">النوع</label>
+                                            <select class="form-select" name="type" id="mealTypeInput" required>
+                                                <option value="breakfast">فطور</option>
+                                                <option value="lunch" selected>غداء</option>
+                                                <option value="dinner">عشاء</option>
+                                                <option value="other">أخرى</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="mb-4">
+                                        <div class="d-flex justify-content-between align-items-center mb-3"><h6 class="mb-0">المكونات</h6><button type="button" class="btn btn-outline-primary btn-sm" onclick="addIngredient()"><i class="bi bi-plus"></i> إضافة مكون</button></div>
+                                        <div id="ingredientsList"></div>
+                                        <div class="card bg-light mt-3">
+                                            <div class="card-body"><div class="row text-center"><div class="col-md-4"><label class="text-muted d-block">عادي</label><span class="h5">$<span id="normalIngredientsTotal">0.00</span></span></div><div class="col-md-4"><label class="text-muted d-block">أخرى</label><span class="h5">$<span id="otherIngredientsTotal">0.00</span></span></div><div class="col-md-4"><label class="text-muted d-block">الإجمالي</label><span class="h5">$<span id="totalCost">0.00</span></span></div></div></div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-4">
+                                        <div class="d-flex justify-content-between align-items-center mb-3"><h6 class="mb-0">المشاركون والمساهمات</h6><button type="button" class="btn btn-outline-primary btn-sm" onclick="addParticipant()"><i class="bi bi-plus"></i> إضافة مشارك</button></div>
+                                        <div id="participantsList"></div>
+                                        <div id="contributionWarning" class="mt-2"></div>
+                                    </div>
+                                    <div class="d-grid"><button type="submit" class="btn btn-primary">إضافة وجبة</button></div>
+                                </form>
+                            </div>
+                        </div>
+                    <% } else { %>
+                        <div class="alert alert-warning"><i class="bi bi-exclamation-triangle"></i> لا توجد فترات. يرجى إنشاء واحدة لإضافة وجبات.</div>
+                    <% } %>
+                    
+                    <!-- Current Period Meals -->
+                    <% if (activePeriod && meals && meals.length > 0) { %>
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-calendar3"></i> وجبات الفترة الحالية</h5>
+                            <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#mealsListContent" aria-expanded="true">
+                                <i id="mealsToggleIcon" class="bi bi-chevron-up"></i>
+                            </button>
+                        </div>
+                        <div class="collapse show" id="mealsListContent">
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>التاريخ</th>
+                                                <th>النوع</th>
+                                                <th>المشاركون</th>
+                                                <th>التكلفة العادية</th>
+                                                <th>التكلفة الأخرى</th>
+                                                <th>الإجمالي</th>
+                                                <th>الإجراءات</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <% meals.forEach(meal => { %>
+                                            <tr id="meal-<%= meal._id %>">
+                                                <td><%= new Date(meal.date).toLocaleDateString() %></td>
+                                                <td><span class="badge bg-<%= meal.type === 'breakfast' ? 'warning' : meal.type === 'lunch' ? 'info' : meal.type === 'dinner' ? 'success' : 'secondary' %>"><%= meal.type.charAt(0).toUpperCase() + meal.type.slice(1) %></span></td>
+                                                <td>
+                                                    <span class="badge bg-light text-dark"><%= meal.participants.length %></span>
+                                                    <button type="button" class="btn btn-link btn-sm p-0 ms-1" data-bs-toggle="tooltip" title="<%= meal.participants.map(p => `${p.name}: $${p.contribution.toFixed(2)}`).join(', ') %>"><i class="bi bi-info-circle"></i></button>
+                                                </td>
+                                                <td>$<%= meal.normalTotalCost.toFixed(2) %></td>
+                                                <td>$<%= meal.otherTotalCost.toFixed(2) %></td>
+                                                <td>$<%= meal.totalCost.toFixed(2) %></td>
+                                                <td>
+                                                    <div class="btn-group btn-group-sm">
+                                                        <button type="button" class="btn btn-outline-primary" onclick="openEditModal('<%= meal._id %>')"><i class="bi bi-pencil"></i></button>
+                                                        <button type="button" class="btn btn-outline-danger" onclick="deleteMeal('<%= meal._id %>')"><i class="bi bi-trash"></i></button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <% }); %>
+                                        </tbody>
+                                        <tfoot class="table-light">
+                                            <tr>
+                                                <td colspan="3"><strong>إجماليات الفترة</strong></td>
+                                                <td><strong>$<%= meals.reduce((sum, meal) => sum + meal.normalTotalCost, 0).toFixed(2) %></strong></td>
+                                                <td><strong>$<%= meals.reduce((sum, meal) => sum + meal.otherTotalCost, 0).toFixed(2) %></strong></td>
+                                                <td><strong>$<%= meals.reduce((sum, meal) => sum + meal.totalCost, 0).toFixed(2) %></strong></td>
+                                                <td></td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <% } %>
+                </div>
+
+                <!-- Right Column: Management -->
+                <div class="col-lg-4">
+                    <!-- Manage Participants Accordion -->
+                    <div class="participants-accordion" id="participantsAccordion">
+                        <div class="participants-accordion-header" id="participantsAccordionHeader">
+                            <span><i class="bi bi-people"></i> إدارة المشاركين</span>
+                            <span class="icon" id="participantsAccordionIcon">▼</span>
+                        </div>
+                        <div class="participants-accordion-body" id="participantsAccordionBody">
+                            <form action="/leader/participants" method="POST" class="mb-3">
+                                <div class="input-group">
+                                    <input type="text" name="name" class="form-control" placeholder="اسم المشارك" required>
+                                    <button type="submit" class="btn btn-primary"><i class="bi bi-plus"></i> إضافة</button>
+                                </div>
+                            </form>
+                            <% if(participants && participants.length > 0) { %>
+                                <ul class="list-group">
+                                    <% participants.forEach(participant => { %>
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            <%= participant.name %>
+                                            <form action="/leader/participants/delete" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد؟')">
+                                                <input type="hidden" name="participantName" value="<%= participant.name %>">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                            </form>
+                                        </li>
+                                    <% }); %>
+                                </ul>
+                            <% } else { %>
+                                <p class="text-muted text-center">لا يوجد مشاركين بعد.</p>
+                            <% } %>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-4">
+                        <div class="card-header"><h5 class="mb-0">تسجيل فترة جديدة</h5></div>
+                        <div class="card-body">
+                            <form action="/leader/period" method="POST">
+                                <div class="mb-3"><label class="form-label">اسم القائد</label><input type="text" class="form-control" name="leaderName" value="<%= locals.user ? user.username : '' %>" minlength="2" required></div>
+                                <div class="row g-3 mb-3"><div class="col-md-6"><label class="form-label">تاريخ البدء</label><input type="date" class="form-control" name="startDate" required></div><div class="col-md-6"><label class="form-label">تاريخ الانتهاء</label><input type="date" class="form-control" name="endDate" required></div></div>
+                                <div class="mb-3"><label class="form-label">الوصف</label><textarea class="form-control" name="description" rows="2"></textarea></div>
+                                <div class="d-grid"><button type="submit" class="btn btn-primary"><i class="bi bi-plus-circle"></i> إنشاء فترة</button></div>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header"><h5 class="mb-0">كل الفترات</h5></div>
+                        <div class="card-body p-0"><div class="list-group list-group-flush">
+                            <% if (periods && periods.length > 0) { %>
+                                <% periods.forEach(period => { %>
+                                    <div class="list-group-item d-flex justify-content-between align-items-center period-card">
+                                        <div>
+                                            <h6 class="mb-1">
+                                                فترة <%= period.leaderName %>
+                                                <% if (period.isActive) { %>
+                                                    <span class="badge bg-success">نشط</span>
+                                                <% } %>
+                                            </h6>
+                                            <small class="text-muted"><%= new Date(period.startDate).toLocaleDateString() %> - <%= new Date(period.endDate).toLocaleDateString() %></small>
+                                        </div>
+                                        <div>
+                                            <a href="/leader/period/<%= period._id %>/edit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+                                            <% if (!period.isActive && periods.length > 1) { %>
+                                                <form action="/leader/period/<%= period._id %>/activate" method="POST" style="display:inline">
+                                                    <button type="submit" class="btn btn-outline-success"><i class="bi bi-lightning"></i> تفعيل</button>
+                                                </form>
+                                            <% } %>
+                                        </div>
+                                    </div>
+                                <% }); %>
+                            <% } else { %>
+                                <div class="list-group-item text-muted text-center">لم يتم العثور على فترات.</div>
+                            <% } %>
+                        </div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="participantsData" data-participants='<%= JSON.stringify(participants) %>' style="display: none;"></div>
+    <script>window.participants = JSON.parse(document.getElementById('participantsData').dataset.participants);</script>
+    <div class="modal fade" id="editMealModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">تعديل الوجبة</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button type="button" class="btn btn-primary" onclick="updateMeal()">حفظ التغييرات</button></div></div></div></div>
+    <script type="text/template" id="editMealFormTemplate"><form id="editMealForm" onsubmit="event.preventDefault();"><div class="row g-3 mb-4"><div class="col-md-6"><label class="form-label">التاريخ</label><input type="text" class="form-control" name="date" required></div><div class="col-md-6"><label class="form-label">النوع</label><select class="form-select" name="type" required><option value="breakfast">فطور</option><option value="lunch">غداء</option><option value="dinner">عشاء</option><option value="other">أخرى</option></select></div></div><div class="mb-4"><div class="d-flex justify-content-between align-items-center mb-3"><h6 class="mb-0">المكونات</h6><button type="button" class="btn btn-outline-primary btn-sm" onclick="addEditIngredient()"><i class="bi bi-plus"></i> إضافة</button></div><div id="editIngredientsList"></div></div><div class="mb-4"><div class="d-flex justify-content-between align-items-center mb-3"><h6 class="mb-0">المشاركون والمساهمات</h6><button type="button" class="btn btn-outline-primary btn-sm" onclick="addEditParticipant()"><i class="bi bi-plus"></i> إضافة</button></div><div id="editParticipantsList"></div></div></form></script>
+    
+    <div id="mealAddModal" class="modal fade" tabindex="-1" aria-labelledby="mealAddModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="mealAddModalLabel">تمت إضافة الوجبة</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p>تمت إضافة وجبتك بنجاح!</p>
+            <button class="btn btn-success" id="downloadMealImgBtnModal"><i class="bi bi-download"></i> تنزيل صورة الوجبة</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script>
+        let editModal;
+        let currentMealId;
+        
+        let ingredientIndex = 0;
+        let participantIndex = 0;
+        let editIngredientIndex = 0;
+        let editParticipantIndex = 0;
+    
+        function addIngredient() {
+            const list = document.getElementById('ingredientsList');
+            const card = document.createElement('div');
+            card.className = 'card mb-2 dynamic-row';
+            card.innerHTML = `
+                <div class="card-body py-2 px-3">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-md-4"><input type="text" class="form-control form-control-sm" name="ingredients[${ingredientIndex}][name]" placeholder="اسم المكون" required></div>
+                        <div class="col-md-3"><div class="input-group input-group-sm"><span class="input-group-text">$</span><input type="number" class="form-control ingredient-price-add" name="ingredients[${ingredientIndex}][price]" placeholder="السعر" step="0.01" min="0" oninput="updateCostTotals()" required></div></div>
+                        <div class="col-md-3"><select class="form-select form-select-sm ingredient-type-add" name="ingredients[${ingredientIndex}][ingredientType]" onchange="updateCostTotals()"><option value="normal" selected>عادي</option><option value="other">أخرى</option></select></div>
+                        <div class="col-md-2 text-end"><button type="button" class="btn btn-outline-danger btn-sm" onclick="removeDynamicRow(this, updateCostTotals)"><i class="bi bi-trash"></i></button></div>
+                    </div>
+                </div>`;
+            list.appendChild(card);
+            ingredientIndex++;
+        }
+    
+        function addParticipant() {
+            const list = document.getElementById('participantsList');
+            const card = document.createElement('div');
+            card.className = 'card mb-2 dynamic-row';
+            card.innerHTML = `
+                <div class="card-body py-2 px-3">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-md-5">
+                            <select class="form-select form-select-sm participant-select" name="participants[${participantIndex}][id]" onchange="updateContributions()" required>
+                                <option value="" disabled selected>-- اختر مشارك --</option>
+                                ${window.participants.map(p => `<option value="${p._id}">${p.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="col-md-5"><div class="input-group input-group-sm"><span class="input-group-text">$</span><input type="number" class="form-control participant-contribution" name="participants[${participantIndex}][contribution]" placeholder="المساهمة" step="0.01" min="0" oninput="updateContributions()" required></div></div>
+                        <div class="col-md-2 text-end"><button type="button" class="btn btn-outline-danger btn-sm" onclick="removeDynamicRow(this, updateContributions)"><i class="bi bi-trash"></i></button></div>
+                    </div>
+                </div>`;
+            list.appendChild(card);
+            participantIndex++;
+        }
+    
+        function removeDynamicRow(btn, updateTotal) {
+            btn.closest('.dynamic-row').remove();
+            if(updateTotal) updateTotal();
+        }
+    
+        function updateCostTotals() {
+            let normalTotal = 0;
+            let otherTotal = 0;
+            document.querySelectorAll('.ingredient-price-add').forEach((input, i) => {
+                const type = document.querySelectorAll('.ingredient-type-add')[i].value;
+                const price = parseFloat(input.value) || 0;
+                if (type === 'normal') normalTotal += price;
+                else otherTotal += price;
+            });
+            document.getElementById('normalIngredientsTotal').textContent = normalTotal.toFixed(2);
+            document.getElementById('otherIngredientsTotal').textContent = otherTotal.toFixed(2);
+            document.getElementById('totalCost').textContent = (normalTotal + otherTotal).toFixed(2);
+            updateContributions();
+        }
+    
+        function updateContributions() {
+            const totalCost = parseFloat(document.getElementById('totalCost').textContent) || 0;
+            const participants = document.querySelectorAll('.participant-select');
+            const contributions = document.querySelectorAll('.participant-contribution');
+            let totalContribution = 0;
+            contributions.forEach(input => totalContribution += parseFloat(input.value) || 0);
+            
+            const warningDiv = document.getElementById('contributionWarning');
+            if (participants.length > 0) {
+                if (Math.abs(totalContribution - totalCost) > 0.01) {
+                    warningDiv.innerHTML = `<div class="alert alert-warning py-1 px-2 mb-0"><small>تحذير: مجموع المساهمات ($${totalContribution.toFixed(2)}) لا يطابق تكلفة الوجبة الإجمالية ($${totalCost.toFixed(2)}).</small></div>`;
+                } else {
+                    warningDiv.innerHTML = `<div class="alert alert-success py-1 px-2 mb-0"><small>المساهمات مطابقة للتكلفة الإجمالية.</small></div>`;
+                }
+            } else {
+                warningDiv.innerHTML = '';
+            }
+        }
+    
+        document.addEventListener('DOMContentLoaded', function() {
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (el) { return new bootstrap.Tooltip(el); });
+            
+            const editModalEl = document.getElementById('editMealModal');
+            if(editModalEl) editModal = new bootstrap.Modal(editModalEl);
+            
+            document.querySelectorAll('.alert.fade-out').forEach(alert => setTimeout(() => { alert.style.display = 'none'; }, 5000));
+            
+            const mealsCollapseEl = document.getElementById('mealsListContent');
+            if (mealsCollapseEl) {
+                const icon = document.getElementById('mealsToggleIcon');
+                mealsCollapseEl.addEventListener('show.bs.collapse', () => icon.classList.replace('bi-chevron-down', 'bi-chevron-up'));
+                mealsCollapseEl.addEventListener('hide.bs.collapse', () => icon.classList.replace('bi-chevron-up', 'bi-chevron-down'));
+            }
+        });
+    
+        function getParticipantsData() {
+            try { return JSON.parse(document.getElementById('participantsData').dataset.participants); } 
+            catch (e) { console.error('Error parsing participants data:', e); return []; }
+        }
+
+        function openEditModal(mealId) {
+            currentMealId = mealId;
+            editIngredientIndex = 0;
+            editParticipantIndex = 0;
+            const modalBody = document.querySelector('#editMealModal .modal-body');
+            modalBody.innerHTML = '<div class="text-center p-4"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+            
+            fetch(`/leader/meal/${mealId}`)
+                .then(response => { if (!response.ok) throw new Error('فشل في جلب بيانات الوجبة.'); return response.json(); })
+                .then(meal => {
+                    modalBody.innerHTML = document.getElementById('editMealFormTemplate').innerHTML;
+                    const form = modalBody.querySelector('#editMealForm');
+                    form.querySelector('[name="date"]').value = meal.date.split('T')[0];
+                    form.querySelector('[name="type"]').value = meal.type;
+                    meal.ingredients.forEach(addEditIngredient);
+                    meal.participants.forEach(addEditParticipant);
+                    editModal.show();
+                })
+                .catch(error => { console.error('خطأ في فتح نافذة التعديل:', error); alert('لا يمكن تحميل بيانات الوجبة. يرجى المحاولة مرة أخرى.'); });
+        }
+    
+        function addEditIngredient(ingredient = null) {
+            const container = document.getElementById('editIngredientsList');
+            const item = document.createElement('div');
+            item.className = 'card mb-2 dynamic-row';
+            item.innerHTML = `
+                <div class="card-body py-2 px-3">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-md-4"><input type="text" class="form-control" name="ingredients[${editIngredientIndex}][name]" placeholder="اسم المكون" value="${ingredient ? ingredient.name : ''}" required></div>
+                        <div class="col-md-3"><input type="number" step="0.01" min="0" class="form-control" name="ingredients[${editIngredientIndex}][price]" placeholder="السعر" value="${ingredient ? ingredient.price.toFixed(2) : ''}" required></div>
+                        <div class="col-md-3"><select class="form-select" name="ingredients[${editIngredientIndex}][ingredientType]" required><option value="normal" ${ingredient && ingredient.ingredientType === 'normal' ? 'selected' : ''}>عادي</option><option value="other" ${ingredient && ingredient.ingredientType === 'other' ? 'selected' : ''}>أخرى</option></select></div>
+                        <div class="col-md-2 text-end"><button type="button" class="btn btn-outline-danger btn-sm" onclick="removeDynamicRow(this)"><i class="bi bi-trash"></i></button></div>
+                    </div>
+                </div>`;
+            container.appendChild(item);
+            editIngredientIndex++;
+        }
+    
+        function addEditParticipant(participant = null) {
+            const container = document.getElementById('editParticipantsList');
+            const participantsData = getParticipantsData();
+            const options = participantsData.map(p => `<option value="${p._id}" ${(participant && p._id === participant.id) ? 'selected' : ''}>${p.name}</option>`).join('');
+            const item = document.createElement('div');
+            item.className = 'card mb-2 dynamic-row';
+            item.innerHTML = `
+                <div class="card-body py-2 px-3">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-md-5"><select class="form-select" name="participants[${editParticipantIndex}][id]" required>${options}</select></div>
+                        <div class="col-md-5"><input type="number" class="form-control" name="participants[${editParticipantIndex}][contribution]" placeholder="المساهمة" step="0.01" min="0" value="${participant ? participant.contribution.toFixed(2) : ''}" required></div>
+                        <div class="col-md-2 text-end"><button type="button" class="btn btn-outline-danger btn-sm" onclick="removeDynamicRow(this)"><i class="bi bi-trash"></i></button></div>
+                    </div>
+                </div>`;
+            container.appendChild(item);
+            editParticipantIndex++;
+        }
+    
+        function updateMeal() {
+            const form = document.getElementById('editMealForm');
+            const dateInput = form.querySelector('[name="date"]');
+            const typeInput = form.querySelector('[name="type"]');
+            const mealData = {
+                date: dateInput ? dateInput.value : '',
+                type: typeInput ? typeInput.value : '',
+                ingredients: [],
+                participants: []
+            };
+            document.querySelectorAll('#editIngredientsList .dynamic-row').forEach(row => {
+                const nameInput = row.querySelector('[name*="[name]"]');
+                const typeSelect = row.querySelector('[name*="[ingredientType]"]');
+                const priceInput = row.querySelector('[name*="[price]"]');
+                mealData.ingredients.push({
+                    name: nameInput ? nameInput.value : '',
+                    ingredientType: typeSelect ? typeSelect.value : '',
+                    price: priceInput ? parseFloat(priceInput.value) || 0 : 0
+                });
+            });
+            document.querySelectorAll('#editParticipantsList .dynamic-row').forEach(row => {
+                const idSelect = row.querySelector('select[name*="[id]"]');
+                const contributionInput = row.querySelector('[name*="[contribution]"]');
+                mealData.participants.push({
+                    id: idSelect ? idSelect.value : '',
+                    contribution: contributionInput ? parseFloat(contributionInput.value) || 0 : 0
+                });
+            });
+            fetch(`/leader/meal/${currentMealId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(mealData) })
+                .then(response => { if (!response.ok) throw new Error('فشل في تحديث الوجبة.'); window.location.reload(); })
+                .catch(error => { console.error('خطأ في تحديث الوجبة:', error); alert(`خطأ: ${error.message}`); });
+        }
+    
+        function deleteMeal(mealId) {
+            if (!confirm('هل أنت متأكد من حذف هذه الوجبة؟')) return;
+            fetch('/leader/meal/' + mealId, { method: 'DELETE' })
+                .then(response => { if (!response.ok) throw new Error('فشل في حذف الوجبة.'); window.location.reload(); })
+                .catch(error => { console.error('خطأ في حذف الوجبة:', error); alert('لا يمكن حذف الوجبة. يرجى المحاولة مرة أخرى.'); });
+        }
+
+        // Set default date to today
+        const mealDateInput = document.getElementById('mealDateInput');
+        if (mealDateInput) {
+            const today = new Date();
+            mealDateInput.value = today.toISOString().slice(0,10);
+        }
+        // AJAX meal add
+        const mealForm = document.getElementById('mealForm');
+        if (mealForm) {
+            mealForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const finalData = {
+                    periodId: document.getElementById('periodId').value,
+                    date: document.getElementById('mealDateInput').value,
+                    type: document.getElementById('mealTypeInput').value,
+                    ingredients: [],
+                    participants: []
+                };
+        
+                document.querySelectorAll('#ingredientsList .dynamic-row').forEach(row => {
+                    const name = row.querySelector('input[name*="[name]"]').value;
+                    const price = row.querySelector('input[name*="[price]"]').value;
+                    const ingredientType = row.querySelector('select[name*="[ingredientType]"]').value;
+                    if (name && price) {
+                        finalData.ingredients.push({
+                            name: name,
+                            price: parseFloat(price),
+                            ingredientType: ingredientType
+                        });
+                    }
+                });
+        
+                document.querySelectorAll('#participantsList .dynamic-row').forEach(row => {
+                    const id = row.querySelector('select[name*="[id]"]').value;
+                    const contribution = row.querySelector('input[name*="[contribution]"]').value;
+                    if (id) {
+                        finalData.participants.push({
+                            id: id,
+                            contribution: parseFloat(contribution) || 0
+                        });
+                    }
+                });
+        
+                try {
+                    const response = await fetch('/leader/meal', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(finalData)
+                    });
+                    const result = await response.json();
+                    if (!response.ok) {
+                        throw new Error(result.error || 'Failed to add meal');
+                    }
+                    
+                    if (result && result.mealId) {
+                        localStorage.setItem('justAddedMealId', result.mealId);
+                        window.location.reload();
+                    } else {
+                        showMealAddAlert('Meal added! (Reload to see in list)', true);
+                    }
+                } catch (error) {
+                    showMealAddAlert(error.message, false);
+                }
+            });
+        }
+        // On page load, show modal if just added meal
+        document.addEventListener('DOMContentLoaded', function() {
+            const justAddedMealId = localStorage.getItem('justAddedMealId');
+            if (justAddedMealId) {
+                // Fetch meal data and render hidden card
+                fetch(`/leader/meal/${justAddedMealId}`)
+                    .then(res => res.json())
+                    .then(meal => {
+                        renderHiddenMealCard(meal);
+                        showMealAddModal(meal);
+                    });
+                localStorage.removeItem('justAddedMealId');
+            }
+        });
+        function showMealAddAlert(msg, success) {
+            const alert = document.getElementById('mealAddAlert');
+            alert.className = 'alert ' + (success ? 'alert-success' : 'alert-danger');
+            alert.innerHTML = msg;
+            alert.classList.remove('d-none');
+            setTimeout(() => alert.classList.add('d-none'), 5000);
+        }
+        // Render hidden meal card for image download
+        function renderHiddenMealCard(meal) {
+            const container = document.getElementById('hiddenMealCardContainer');
+            if (!container) return;
+            container.innerHTML = `
+            <div class="card h-100 meal-summary shadow-sm" id="hidden-meal-card">
+                <div class="card-header bg-transparent border-bottom-0 d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="badge rounded-pill text-bg-${meal.type === 'breakfast' ? 'warning' : meal.type === 'lunch' ? 'info' : meal.type === 'dinner' ? 'primary' : 'secondary'}">
+                            <i class="bi bi-${meal.type === 'breakfast' ? 'sun' : meal.type === 'lunch' ? 'brightness-high' : meal.type === 'dinner' ? 'moon' : 'clock'}"></i>
+                            ${meal.type.charAt(0).toUpperCase() + meal.type.slice(1)}
+                        </span>
+                        <small class="text-muted ms-2">${new Date(meal.date).toLocaleDateString()}</small>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title mb-3">${meal.name || ''}</h5>
+                    <div class="mb-3">
+                        <h6 class="card-subtitle mb-2 text-muted"><i class="bi bi-basket me-1"></i> المكونات</h6>
+                        <ul class="list-group mb-2">
+                            ${(meal.ingredients || []).map(ing => `
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span><strong>${ing.name}</strong> <span class="text-muted small ms-2">(${ing.ingredientType})</span></span>
+                                    <span class="badge ${ing.ingredientType === 'other' ? 'text-bg-info' : 'text-bg-primary'}">$${ing.price.toFixed(2)}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="card-subtitle mb-2 text-muted"><i class="bi bi-cash me-1"></i> تكلفة الوجبة</h6>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <span class="badge bg-secondary">عادي: $${meal.normalTotalCost?.toFixed(2) || '0.00'}</span>
+                            <span class="badge bg-info">أخرى: $${meal.otherTotalCost?.toFixed(2) || '0.00'}</span>
+                            <span class="badge bg-primary">إجمالي: $${meal.totalCost?.toFixed(2) || '0.00'}</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="card-subtitle mb-2 text-muted"><i class="bi bi-people me-1"></i> المشاركون</h6>
+                        <ul class="list-group mb-2">
+                            ${(meal.participants || []).map(p => `
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>${p.name}</span>
+                                    <span class="badge bg-secondary">$${(p.normalShare || (meal.normalTotalCost / meal.participants.length)).toFixed(2)}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            `;
+        }
+        // Show Bootstrap modal for meal add
+        function showMealAddModal(meal) {
+            const modal = new bootstrap.Modal(document.getElementById('mealAddModal'));
+            const btn = document.getElementById('downloadMealImgBtnModal');
+            btn.onclick = function() {
+                setTimeout(() => downloadMealImage('hidden-meal-card', meal), 200);
+            };
+            modal.show();
+        }
+        // Download meal summary as image (copied from period-details.ejs)
+        function downloadMealImage(mealId, meal) {
+            const mealElement = document.getElementById(mealId);
+            if (!mealElement) return;
+            html2canvas(mealElement).then(canvas => {
+                const link = document.createElement('a');
+                const date = new Date(meal.date).toLocaleDateString('en-CA'); // YYYY-MM-DD
+                const type = meal.type;
+                link.download = `${date} - ${type}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+            }).catch(error => {
+                alert('Failed to generate meal summary image');
+            });
+        }
+        // Fix for missing updateTotals
+        function updateTotals() { updateContributions(); }
+
+        // Participants Accordion pure JS toggle
+        const accHeader = document.getElementById('participantsAccordionHeader');
+        const accBody = document.getElementById('participantsAccordionBody');
+        const accIcon = document.getElementById('participantsAccordionIcon');
+        if (accHeader && accBody && accIcon) {
+            accHeader.onclick = function() {
+                const isOpen = accBody.classList.toggle('open');
+                accHeader.classList.toggle('open', isOpen);
+                accIcon.style.transform = isOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+            };
+        }
+
+        // Pure JS Navbar Toggler
+        const navbarToggler = document.getElementById('customNavbarToggler');
+        const navbarLinks = document.getElementById('customNavbarLinks');
+        if (navbarToggler && navbarLinks) {
+            navbarToggler.onclick = function() {
+                navbarLinks.classList.toggle('open');
+            };
+            // Optional: close menu when clicking a link (mobile UX)
+            navbarLinks.querySelectorAll('a').forEach(link => {
+                link.onclick = function() {
+                    if (window.innerWidth < 992) navbarLinks.classList.remove('open');
+                };
+            });
+        }
+    </script>
+    <div id="mealAddAlert" class="alert d-none mt-3" role="alert"></div>
+    <!-- Hidden container for meal card image generation -->
+    <div id="hiddenMealCardContainer" style="position:fixed;left:-9999px;top:-9999px;width:400px;z-index:-1;"></div>
+</body>
+</html>
