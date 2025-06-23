@@ -156,14 +156,14 @@ router.get('/share', async (req, res) => {
 
         if (selectedPeriodId) {
             selectedPeriod = await Period.findById(selectedPeriodId);
-            if (selectedPeriod) {
+        if (selectedPeriod) {
                 if (selectedPeriod.shareTable && selectedPeriod.shareTable.length > 0) {
                     participants = selectedPeriod.shareTable.filter(row => row.name !== 'Total').map(row => ({ 
                         name: row.name, 
                         numbers: [row.num], 
                         note: row.note 
                     }));
-                    const totalRow = selectedPeriod.shareTable.find(row => row.name === 'Total');
+                const totalRow = selectedPeriod.shareTable.find(row => row.name === 'Total');
                     if (totalRow) totalSum = totalRow.num;
                 }
 

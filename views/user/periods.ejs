@@ -1,38 +1,30 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <title>عرض الفترات</title>
-</head>
-<body>
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-12 col-lg-10 offset-lg-1">
-                <h1 class="mb-4">عرض الفترات</h1>
-                
-                <!-- Periods List -->
-                <div class="row">
-                    <% periods.forEach(period => { %>
-                    <div class="col-md-4 mb-4">
-                        <div class="card">
-                            <div class="card-body">
-                                <h5 class="card-title">
-                                    فترة <%= period.leaderName %>
-                                    <% if (period.isActive) { %>
-                                        <span class="badge bg-success">نشط</span>
-                                    <% } %>
-                                </h5>
-                                <p class="card-text">
-                                    من: <%= period.startDate.toLocaleDateString() %><br>
-                                    إلى: <%= period.endDate.toLocaleDateString() %>
-                                </p>
-                                <a href="/user/period/<%= period._id %>" class="btn btn-primary">عرض التفاصيل</a>
-                            </div>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12 col-lg-10 offset-lg-1">
+            <h1 class="mb-4">عرض الفترات</h1>
+            
+            <!-- Periods List -->
+            <div class="row">
+                <% periods.forEach(period => { %>
+                <div class="col-md-4 mb-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                فترة <%= period.leaderName %>
+                                <% if (period.isActive) { %>
+                                    <span class="badge bg-success">نشط</span>
+                                <% } %>
+                            </h5>
+                            <p class="card-text">
+                                من: <%= period.startDate.toLocaleDateString() %><br>
+                                إلى: <%= period.endDate.toLocaleDateString() %>
+                            </p>
+                            <a href="/user/period/<%= period._id %>" class="btn btn-primary">عرض التفاصيل</a>
                         </div>
                     </div>
-                    <% }); %>
                 </div>
+                <% }); %>
             </div>
         </div>
     </div>
-</body>
-</html>
+</div>
