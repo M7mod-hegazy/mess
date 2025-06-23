@@ -13,8 +13,8 @@ const User = require('./models/User');
 
 const app = express();
 
-// Connect to MongoDB (replace with your real URI)
-const MONGO_URI = 'mongodb://localhost:27017/mes';
+// Connect to MongoDB (using environment variable for production)
+const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/mes';
 mongoose.connect(MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
@@ -43,7 +43,7 @@ app.use(bodyParser.json());
 
 // Session middleware
 app.use(session({
-  secret: 'your-session-secret',
+  secret: process.env.SESSION_SECRET || 'your-session-secret',
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({ mongoUrl: MONGO_URI })
@@ -72,8 +72,19 @@ app.get('/', (req, res) => {
   res.render('index');
 });
 
+// 404 handler
+app.use((req, res, next) => {
+  res.status(404).render('404', { message: 'Page not found' });
+});
+
+// Error handler
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).render('error', { message: 'Something broke!' });
+});
+
 // Start the server
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
 });
