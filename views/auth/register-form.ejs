@@ -1,13 +1,10 @@
-<% var title = "تسجيل الدخول - نظام إدارة الوجبات"; %>
-<% var head = '<link rel="stylesheet" href="/css/responsive.css">'; %>
-
 <div id="interactive-bg"></div>
 <div class="container" style="position:relative;z-index:1;">
     <div class="row justify-content-center mt-4 mt-md-5">
         <div class="col-sm-10 col-md-8 col-lg-6">
             <div class="card shadow-sm">
                 <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0"><i class="bi bi-box-arrow-in-right me-2"></i>تسجيل الدخول</h4>
+                    <h4 class="mb-0"><i class="bi bi-person-plus me-2"></i>التسجيل كقائد</h4>
                 </div>
                 <div class="card-body p-4">
                     <% if (locals.error) { %>
@@ -16,16 +13,24 @@
                             <div><%= error %></div>
                         </div>
                     <% } %>
-                    <form method="POST" action="/auth/login">
+                    <form method="POST" action="/auth/register">
                         <div class="mb-3">
                             <label for="username" class="form-label">اسم المستخدم</label>
                             <input type="text" class="form-control" id="username" name="username" required>
                         </div>
                         <div class="mb-3">
+                            <label for="email" class="form-label">البريد الإلكتروني</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                        <div class="mb-3">
                             <label for="password" class="form-label">كلمة المرور</label>
                             <input type="password" class="form-control" id="password" name="password" required>
                         </div>
-                        <button type="submit" class="btn btn-primary w-100">تسجيل الدخول</button>
+                        <div class="mb-3">
+                            <label for="confirmPassword" class="form-label">تأكيد كلمة المرور</label>
+                            <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">تسجيل</button>
                     </form>
                 </div>
             </div>
@@ -85,7 +90,4 @@
     },
     retina_detect: true
   });
-</script>
-
-<%- include('../layout') %>
-
+</script> 
