@@ -7,7 +7,8 @@ const mongoose = require('mongoose');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const bodyParser = require('body-parser');
-const expressLayouts = require('express-ejs-layouts');
+const engine = require('ejs-mate');
+const cors = require('cors');
 
 // Log that environment variables are loaded
 console.log('Environment variables loaded');
@@ -19,6 +20,17 @@ const authRoutes = require('./routes/auth');
 const User = require('./models/User');
 
 const app = express();
+
+// Configure CORS
+app.use(cors({
+  origin: true, // Allow requests from any origin
+  credentials: true, // Allow credentials (cookies) to be sent with requests
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Trust proxy (needed for secure cookies behind a proxy/load balancer)
+app.set('trust proxy', 1);
 
 // Connect to MongoDB Atlas
 const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/mes';
@@ -34,14 +46,11 @@ mongoose.connect(MONGO_URI, {
 });
 
 // Set EJS as the view engine
+app.engine('ejs', engine);
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Configure EJS Layouts
-app.use(expressLayouts);
-app.set('layout', 'layout');
-app.set("layout extractScripts", true);
-app.set("layout extractStyles", true);
+
 
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, 'public')));
@@ -55,7 +64,13 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'your-session-secret',
   resave: false,
   saveUninitialized: false,
-  store: MongoStore.create({ mongoUrl: MONGO_URI })
+  store: MongoStore.create({ mongoUrl: MONGO_URI }),
+  cookie: {
+    httpOnly: true,
+    secure: false, // Set to false for local development
+    sameSite: 'lax', // Helps with CSRF
+    maxAge: 7 * 24 * 60 * 60 * 1000 // Session expires in 7 days
+  }
 }));
 
 // Load user data for all routes

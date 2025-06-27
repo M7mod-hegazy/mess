@@ -44,9 +44,15 @@ router.get('/dashboard', async (req, res) => {
         delete req.session.error;
         delete req.session.success;
     } catch (error) {
-        console.error('Dashboard error:', error);
+        console.error('Error loading leader dashboard:', error);
         res.status(500).render('leader/dashboard', {
-            error: 'Failed to load dashboard'
+            activePeriod: null,
+            periods: [],
+            meals: [],
+            periodStats: null,
+            participants: [],
+            error: 'Failed to load dashboard',
+            success: null
         });
     }
 });
@@ -56,13 +62,17 @@ router.post('/participants', async (req, res) => {
     try {
         const { name } = req.body;
         const leader = await User.findById(req.session.userId);
-        
+
+        if (!leader) {
+            req.session.error = 'User not found or not logged in.';
+            return res.redirect('/auth/login');
+        }
         // Add new participant
         leader.managedParticipants.push({ name });
         await leader.save();
-        
         res.redirect('/leader/dashboard');
     } catch (error) {
+        console.error('Error managing participants:', error);
         res.status(500).send('Server error');
     }
 });
@@ -72,16 +82,20 @@ router.post('/participants/delete', async (req, res) => {
     try {
         const { participantName } = req.body;
         const leader = await User.findById(req.session.userId);
-        
+
+        if (!leader) {
+            req.session.error = 'User not found or not logged in.';
+            return res.redirect('/auth/login');
+        }
         // Find and remove the participant by name
         const index = leader.managedParticipants.findIndex(p => p.name === participantName);
         if (index !== -1) {
             leader.managedParticipants.splice(index, 1);
             await leader.save();
         }
-        
         res.redirect('/leader/dashboard');
     } catch (error) {
+        console.error('Error deleting participant:', error);
         res.status(500).send('Server error');
     }
 });
@@ -93,6 +107,7 @@ router.get('/periods', async (req, res) => {
             .sort({ startDate: -1 });
         res.json(periods);
     } catch (error) {
+        console.error('Error fetching periods for leader:', error);
         res.status(500).json({ error: 'Failed to fetch periods' });
     }
 });
@@ -112,6 +127,7 @@ router.get('/period/:id', async (req, res) => {
         await period.updateOthersCosts();
         res.json(period);
     } catch (error) {
+        console.error('Error fetching leader period details:', error);
         res.status(500).json({ error: 'Failed to fetch period details' });
     }
 });
@@ -132,6 +148,7 @@ router.get('/period/:id/edit', async (req, res) => {
         const periodStats = await period.calculatePeriodStatistics();
         res.render('leader/edit-period', { period, periodStats });
     } catch (error) {
+        console.error('Error loading period edit page:', error);
         req.session.error = 'Failed to load period';
         res.redirect('/leader/dashboard');
     }
@@ -157,6 +174,7 @@ router.post('/period/:id', async (req, res) => {
         req.session.success = 'Period updated successfully';
         res.redirect('/leader/dashboard');
     } catch (error) {
+        console.error('Error updating period:', error);
         req.session.error = formatErrors(error);
         res.redirect(`/leader/period/${req.params.id}/edit`);
     }

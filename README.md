@@ -1,7 +1,7 @@
 # MES - Meal Expense System
 
 ## Overview
-MES is a web application for managing meal expenses and participants.
+MES is a web application for managing meal expenses and participants. The application is deployed at [https://mes-ruddy.vercel.app/](https://mes-ruddy.vercel.app/) and supports cross-device login.
 
 ## MongoDB Atlas Connection
 
@@ -65,3 +65,18 @@ The following environment variables are used:
 - `MONGODB_URI`: MongoDB Atlas connection string
 - `SESSION_SECRET`: Secret for session encryption
 - `PORT`: (Optional) Port to run the server on (defaults to 3001)
+- `NODE_ENV`: Set to 'production' in production environments for secure cookies
+
+## Cross-Device Login
+
+The application now supports logging in from different devices:
+
+1. CORS is configured to allow cross-origin requests with credentials
+2. Session cookies are configured with appropriate security settings
+3. The application is set to trust proxies for secure cookie handling
+
+If you're experiencing login issues across different devices, please ensure:
+
+- You're using the same username and password
+- Your browser accepts cookies from the application domain
+- You're accessing the application via the deployed URL: [https://mes-ruddy.vercel.app/](https://mes-ruddy.vercel.app/)

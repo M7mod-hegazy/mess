@@ -25,6 +25,7 @@ router.post('/register', async (req, res) => {
     req.session.userId = user._id;
     res.redirect('/leader/dashboard');
   } catch (err) {
+    console.error('Error during registration:', err);
     res.render('auth/register', { error: 'حدث خطأ أثناء التسجيل' });
   }
 });
@@ -49,6 +50,7 @@ router.post('/login', async (req, res) => {
     req.session.userId = user._id;
     res.redirect('/leader/dashboard');
   } catch (err) {
+    console.error('Error during login:', err);
     res.render('auth/login', { error: 'حدث خطأ أثناء تسجيل الدخول' });
   }
 });
@@ -60,4 +62,4 @@ router.get('/logout', (req, res) => {
   });
 });
 
-module.exports = router; 
+module.exports = router;

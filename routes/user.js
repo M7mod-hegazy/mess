@@ -8,18 +8,19 @@ const User = require('../models/User');
 router.use(express.json());
 
 // View periods list
-router.get('/', async (req, res) => {
+router.get(['/', '/periods'], async (req, res) => {
     try {
         const periods = await Period.find().sort({ startDate: -1 });
         const activePeriod = periods.find(p => p.isActive);
-        res.render('user/periods', { periods, activePeriod });
+        res.render('user/periods', { periods, activePeriod, user: res.locals.user });
     } catch (error) {
+        console.error('Error fetching periods:', error);
         res.status(500).send('Server error');
     }
 });
 
 // View period details
-router.get('/period/:id', async (req, res) => {
+router.get(['/period/:id', '/periods/:id'], async (req, res) => {
     try {
         const period = await Period.findById(req.params.id)
             .populate('leaderId');  // Make sure to populate leaderId
@@ -30,10 +31,11 @@ router.get('/period/:id', async (req, res) => {
             period, 
             meals,
             periodStats,
-            userId: req.session.userId // Add userId from session
+            userId: req.session.userId, // Add userId from session
+            user: res.locals.user // Pass user for navbar
         });
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Error fetching period details:', error);
         res.status(500).send('Server error');
     }
 });
@@ -44,6 +46,7 @@ router.get('/meal/:id', async (req, res) => {
         const meal = await Meal.findById(req.params.id);
         res.render('user/meal-summary', { meal });
     } catch (error) {
+        console.error('Error fetching meal summary:', error);
         res.status(500).send('Server error');
     }
 });
@@ -131,8 +134,9 @@ router.get('/statistics', async (req, res) => {
                 totalCostsOverTime
             };
         }
-        res.render('user/statistics', { periods, activePeriod, selectedPeriodId, statsData });
+        res.render('user/statistics', { periods, activePeriod, selectedPeriodId, statsData, user: res.locals.user });
     } catch (error) {
+        console.error('Error loading statistics:', error);
         res.status(500).send('Failed to load statistics');
     }
 });
@@ -179,10 +183,11 @@ router.get('/share', async (req, res) => {
             selectedPeriod, 
             participants,
             totalSum,
-            addableParticipants
+            addableParticipants,
+            user: res.locals.user // Pass user for navbar
         });
     } catch (error) {
-        console.error("Share page error:", error);
+        console.error('Error loading share page:', error);
         res.status(500).send('Failed to load share page');
     }
 });

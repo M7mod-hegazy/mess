@@ -1,0 +1,46 @@
+<nav class="navbar navbar-expand-lg navbar-light bg-light sticky-top">
+    <div class="container">
+        <a class="navbar-brand" href="/">إدارة الوجبات</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <% if (typeof user !== 'undefined' && user) { %>
+                    <li class="nav-item">
+                        <a class="nav-link py-2 <%= (typeof activePage !== 'undefined' && activePage === 'dashboard') ? 'active fw-bold text-primary' : '' %>" href="/leader/dashboard"><i class="bi bi-speedometer2 d-none d-sm-inline me-1"></i>لوحة تحكم القائد</a>
+                    </li>
+                <% } %>
+                <li class="nav-item">
+                    <a class="nav-link py-2 <%= (typeof activePage !== 'undefined' && activePage === 'periods') ? 'active fw-bold text-primary' : '' %>" href="/user"><i class="bi bi-calendar-week d-none d-sm-inline me-1"></i>عرض الفترات</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link py-2 <%= (typeof activePage !== 'undefined' && activePage === 'statistics') ? 'active fw-bold text-primary' : '' %>" href="/user/statistics"><i class="bi bi-bar-chart d-none d-sm-inline me-1"></i>الإحصائيات</a>
+                </li>
+                <% if (typeof user !== 'undefined' && user) { %>
+                <li class="nav-item">
+                    <a class="nav-link py-2 <%= (typeof activePage !== 'undefined' && activePage === 'share') ? 'active fw-bold text-primary' : '' %>" href="/user/share"><i class="bi bi-share d-none d-sm-inline me-1"></i>مشاركة</a>
+                </li>
+                <% } %>
+            </ul>
+            <hr class="d-lg-none">
+            <ul class="navbar-nav">
+                <% if (typeof user !== 'undefined' && user) { %>
+                    <li class="nav-item d-flex align-items-center">
+                        <span class="nav-link text-dark py-2"><i class="bi bi-person-circle d-none d-sm-inline me-1"></i>مرحباً، <%= user.username %></span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link py-2" href="/auth/logout"><i class="bi bi-box-arrow-right d-none d-sm-inline me-1"></i>تسجيل الخروج</a>
+                    </li>
+                <% } else { %>
+                    <li class="nav-item">
+                        <a class="nav-link py-2" href="/auth/login"><i class="bi bi-box-arrow-in-right d-none d-sm-inline me-1"></i>تسجيل الدخول</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link py-2" href="/auth/register"><i class="bi bi-person-plus d-none d-sm-inline me-1"></i>التسجيل</a>
+                    </li>
+                <% } %>
+            </ul>
+        </div>
+    </div>
+</nav> 
