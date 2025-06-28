@@ -62,12 +62,8 @@
     </nav>
 
     <!-- Main content in the middle -->
-    <main style="flex: 1 0 auto; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 0;">
-        <% if (typeof body !== 'undefined' && body) { %>
-            <%- body %>
-        <% } else { %>
-            <%- typeof body !== 'undefined' ? body : '' %>
-        <% } %>
+    <main style="flex: 1 0 auto;">
+        <%- typeof body !== 'undefined' ? body : '' %>
     </main>
 
     <!-- Footer always at the bottom -->

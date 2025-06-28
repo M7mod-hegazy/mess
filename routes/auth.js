@@ -9,7 +9,7 @@ const path = require('path');
 router.get('/register', async (req, res) => {
   const body = await ejs.renderFile(
     path.join(__dirname, '../views/auth/register-form.ejs'),
-    { error: null, locals: { error: null } }
+    { error: null } // Pass error as null initially
   );
   res.render('layout', {
     title: 'التسجيل - نظام إدارة الوجبات',
@@ -23,11 +23,13 @@ router.post('/register', async (req, res) => {
   const { username, email, password } = req.body;
   try {
     if (!username || !email || !password) {
-      return res.render('auth/register', { error: 'يرجى إدخال جميع الحقول' });
+      const body = await ejs.renderFile(path.join(__dirname, '../views/auth/register-form.ejs'), { error: 'يرجى إدخال جميع الحقول' });
+      return res.render('layout', { title: 'التسجيل - نظام إدارة الوجبات', head: '<link rel="stylesheet" href="/css/responsive.css">', body });
     }
     const existing = await User.findOne({ $or: [{ username }, { email }] });
     if (existing) {
-      return res.render('auth/register', { error: 'اسم المستخدم أو البريد الإلكتروني مستخدم بالفعل' });
+      const body = await ejs.renderFile(path.join(__dirname, '../views/auth/register-form.ejs'), { error: 'اسم المستخدم أو البريد الإلكتروني مستخدم بالفعل' });
+      return res.render('layout', { title: 'التسجيل - نظام إدارة الوجبات', head: '<link rel="stylesheet" href="/css/responsive.css">', body });
     }
     const hashed = await bcrypt.hash(password, 10);
     const user = new User({ username, email, password: hashed, managedParticipants: [] });
@@ -36,7 +38,8 @@ router.post('/register', async (req, res) => {
     return res.redirect('/leader/dashboard');
   } catch (err) {
     console.error('Error during registration:', err);
-    return res.render('auth/register', { error: 'حدث خطأ أثناء التسجيل' });
+    const body = await ejs.renderFile(path.join(__dirname, '../views/auth/register-form.ejs'), { error: 'حدث خطأ أثناء التسجيل' });
+    return res.render('layout', { title: 'التسجيل - نظام إدارة الوجبات', head: '<link rel="stylesheet" href="/css/responsive.css">', body });
   }
 });
 
@@ -57,19 +60,23 @@ router.get('/login', async (req, res) => {
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
   try {
-    const user = await User.findOne({ username });
+    // Allow login with either username or email
+    const user = await User.findOne({ $or: [{ username: username }, { email: username }] });
     if (!user) {
-      return res.render('auth/login', { error: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
+      const body = await ejs.renderFile(path.join(__dirname, '../views/auth/login-form.ejs'), { error: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
+      return res.render('layout', { title: 'تسجيل الدخول - نظام إدارة الوجبات', head: '<link rel="stylesheet" href="/css/responsive.css">', body });
     }
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
-      return res.render('auth/login', { error: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
+      const body = await ejs.renderFile(path.join(__dirname, '../views/auth/login-form.ejs'), { error: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
+      return res.render('layout', { title: 'تسجيل الدخول - نظام إدارة الوجبات', head: '<link rel="stylesheet" href="/css/responsive.css">', body });
     }
     req.session.userId = user._id;
     res.redirect('/leader/dashboard');
   } catch (err) {
     console.error('Error during login:', err);
-    res.render('auth/login', { error: 'حدث خطأ أثناء تسجيل الدخول' });
+    const body = await ejs.renderFile(path.join(__dirname, '../views/auth/login-form.ejs'), { error: 'حدث خطأ أثناء تسجيل الدخول' });
+    res.render('layout', { title: 'تسجيل الدخول - نظام إدارة الوجبات', head: '<link rel="stylesheet" href="/css/responsive.css">', body });
   }
 });
 
