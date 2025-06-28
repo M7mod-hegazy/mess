@@ -96,6 +96,12 @@ router.post('/authenticate-google', async (req, res) => {
   }
 
   try {
+    // Check if Firebase Admin is initialized
+    if (!admin.apps.length) {
+      console.log('Firebase Admin not initialized - skipping token verification');
+      return res.status(500).send('Firebase Admin not configured. Please check environment variables.');
+    }
+
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     console.log('Successfully verified ID token! User:', decodedToken);
 

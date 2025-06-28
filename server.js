@@ -21,12 +21,24 @@ const User = require('./models/User');
 
 const app = express();
 
+// Initialize Firebase Admin with environment variables
 const admin = require('firebase-admin');
-const serviceAccount = require('./mess-3be39-firebase-adminsdk-fbsvc-6e83a4aa68.json');
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
+// Check if we have Firebase service account credentials in environment variables
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  try {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+    console.log('Firebase Admin initialized with environment variables');
+  } catch (error) {
+    console.error('Error parsing Firebase service account:', error);
+    console.log('Firebase Admin not initialized - some features may not work');
+  }
+} else {
+  console.log('FIREBASE_SERVICE_ACCOUNT environment variable not found - Firebase Admin not initialized');
+}
 
 // Configure CORS
 app.use(cors({

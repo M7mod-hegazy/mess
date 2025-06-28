@@ -266,6 +266,16 @@ router.post(['/meal', '/meal/:id'], async (req, res) => {
         // If idToken is present, verify and get user
         if (idToken) {
             try {
+                // Check if Firebase Admin is initialized
+                if (!admin.apps.length) {
+                    console.log('Firebase Admin not initialized - skipping token verification');
+                    if (req.headers['content-type'] && req.headers['content-type'].includes('application/json')) {
+                        return res.status(500).json({ success: false, error: 'Firebase Admin not configured' });
+                    }
+                    req.session.error = 'Firebase Admin not configured. Please check environment variables.';
+                    return res.redirect('/auth/login');
+                }
+
                 const decodedToken = await admin.auth().verifyIdToken(idToken);
                 // Find user by googleId or email
                 let user = await User.findOne({ $or: [
@@ -559,6 +569,14 @@ router.post('/period', async (req, res) => {
         if (idToken) {
             try {
                 console.log('Verifying idToken...');
+                
+                // Check if Firebase Admin is initialized
+                if (!admin.apps.length) {
+                    console.log('Firebase Admin not initialized - skipping token verification');
+                    req.session.error = 'Firebase Admin not configured. Please check environment variables.';
+                    return res.redirect('/auth/login');
+                }
+                
                 const decodedToken = await admin.auth().verifyIdToken(idToken);
                 console.log('Token verified, UID:', decodedToken.uid, 'Email:', decodedToken.email);
                 
