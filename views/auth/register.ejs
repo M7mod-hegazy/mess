@@ -1,0 +1,168 @@
+<% var title = "التسجيل - نظام إدارة الوجبات"; %>
+<% var head = '<link rel="stylesheet" href="/css/responsive.css">'; %>
+
+<%- include('../partials/_interactive-bg') %>
+<div class="container" style="position:relative;z-index:1;">
+    <div class="row justify-content-center mt-4 mt-md-5">
+        <div class="col-sm-10 col-md-8 col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="bi bi-person-plus me-2"></i>التسجيل كقائد</h4>
+                </div>
+                <div class="card-body p-4">
+                    <% if (locals.error) { %>
+                        <div class="alert alert-danger d-flex align-items-center" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            <div><%= error %></div>
+                        </div>
+                    <% } %>
+                    
+                    <!-- Loading spinner for Google auth -->
+                    <div id="googleAuthLoading" class="alert alert-info d-none" role="alert">
+                        <div class="d-flex align-items-center">
+                            <div class="spinner-border spinner-border-sm me-2" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            جاري التسجيل باستخدام جوجل...
+                        </div>
+                    </div>
+                    
+                    <form method="POST" action="/auth/register">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">اسم المستخدم</label>
+                            <input type="text" class="form-control" id="username" name="username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">البريد الإلكتروني</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">كلمة المرور</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirmPassword" class="form-label">تأكيد كلمة المرور</label>
+                            <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">تسجيل</button>
+                    </form>
+                    <hr>
+                    <button id="googleSignInBtn" class="btn btn-danger w-100 mt-3" onclick="signInWithGoogle()">
+                        <i class="bi bi-google me-2"></i>التسجيل باستخدام جوجل
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+
+<script>
+  const auth = firebase.auth();
+  const provider = new firebase.auth.GoogleAuthProvider();
+  
+  // Add scopes if needed
+  provider.addScope('email');
+  provider.addScope('profile');
+
+  function showLoading() {
+    document.getElementById('googleAuthLoading').classList.remove('d-none');
+    document.getElementById('googleSignInBtn').disabled = true;
+  }
+
+  function hideLoading() {
+    document.getElementById('googleAuthLoading').classList.add('d-none');
+    document.getElementById('googleSignInBtn').disabled = false;
+  }
+
+  function showError(message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-danger d-flex align-items-center';
+    alertDiv.innerHTML = `
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>
+      <div>${message}</div>
+    `;
+    
+    const cardBody = document.querySelector('.card-body');
+    cardBody.insertBefore(alertDiv, cardBody.firstChild);
+    
+    // Remove the alert after 5 seconds
+    setTimeout(() => {
+      alertDiv.remove();
+    }, 5000);
+  }
+
+  function signInWithGoogle() {
+    showLoading();
+    
+    auth.signInWithPopup(provider)
+      .then((result) => {
+        console.log('Google sign-in successful:', result.user);
+        
+        return result.user.getIdToken();
+      })
+      .then((idToken) => {
+        console.log('Got ID token, sending to backend...');
+        
+        return fetch('/auth/authenticate-google', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`
+          },
+          body: JSON.stringify({
+            displayName: auth.currentUser.displayName,
+            email: auth.currentUser.email,
+            photoURL: auth.currentUser.photoURL,
+            isRegistration: true
+          })
+        });
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log('Backend response:', data);
+        hideLoading();
+        
+        if (data.success) {
+          // Redirect to dashboard
+          window.location.href = '/leader/dashboard';
+        } else {
+          showError(data.message || 'حدث خطأ أثناء التسجيل');
+        }
+      })
+      .catch((error) => {
+        console.error("Authentication Error:", error);
+        hideLoading();
+        
+        let errorMessage = 'حدث خطأ أثناء التسجيل';
+        if (error.code === 'auth/popup-closed-by-user') {
+          errorMessage = 'تم إغلاق نافذة التسجيل';
+        } else if (error.code === 'auth/popup-blocked') {
+          errorMessage = 'تم حظر النافذة المنبثقة، يرجى السماح بالنوافذ المنبثقة';
+        } else if (error.code === 'auth/cancelled-popup-request') {
+          errorMessage = 'تم إلغاء طلب التسجيل';
+        }
+        
+        showError(errorMessage);
+      });
+  }
+
+  // Listen for auth state changes
+  auth.onAuthStateChanged((user) => {
+    if (user) {
+      console.log('User is signed in:', user);
+    } else {
+      console.log('User is signed out');
+    }
+  });
+</script>
+
+<%- include('../layout') %>

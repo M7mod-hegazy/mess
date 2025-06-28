@@ -1,0 +1,150 @@
+<% var title = "اختبار Firebase - نظام إدارة الوجبات"; %>
+<% var head = '<link rel="stylesheet" href="/css/responsive.css">'; %>
+
+<%- include('../partials/_interactive-bg') %>
+<div class="container" style="position:relative;z-index:1;">
+    <div class="row justify-content-center mt-4 mt-md-5">
+        <div class="col-sm-10 col-md-8 col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="bi bi-gear me-2"></i>اختبار Firebase Authentication</h4>
+                </div>
+                <div class="card-body p-4">
+                    <div id="status" class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        جاري التحقق من حالة Firebase...
+                    </div>
+                    
+                    <div id="userInfo" class="d-none">
+                        <h5>معلومات المستخدم:</h5>
+                        <div class="mb-3">
+                            <strong>الاسم:</strong> <span id="userName"></span>
+                        </div>
+                        <div class="mb-3">
+                            <strong>البريد الإلكتروني:</strong> <span id="userEmail"></span>
+                        </div>
+                        <div class="mb-3">
+                            <strong>معرف المستخدم:</strong> <span id="userId"></span>
+                        </div>
+                        <div class="mb-3" id="userPhotoContainer">
+                            <strong>الصورة:</strong><br>
+                            <img id="userPhoto" class="rounded-circle mt-2" style="width: 50px; height: 50px;">
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button id="signInBtn" class="btn btn-success" onclick="signInWithGoogle()">
+                            <i class="bi bi-google me-2"></i>تسجيل الدخول باستخدام جوجل
+                        </button>
+                        <button id="signOutBtn" class="btn btn-danger d-none" onclick="signOutFromFirebase()">
+                            <i class="bi bi-box-arrow-right me-2"></i>تسجيل الخروج
+                        </button>
+                        <button class="btn btn-secondary" onclick="window.location.href='/auth/login'">
+                            <i class="bi bi-arrow-left me-2"></i>العودة إلى صفحة تسجيل الدخول
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script src="/js/firebase-auth.js"></script>
+
+<script>
+const auth = firebase.auth();
+const provider = new firebase.auth.GoogleAuthProvider();
+
+provider.addScope('email');
+provider.addScope('profile');
+
+function updateStatus(message, type = 'info') {
+    const statusDiv = document.getElementById('status');
+    statusDiv.className = `alert alert-${type}`;
+    statusDiv.innerHTML = `<i class="bi bi-info-circle me-2"></i>${message}`;
+}
+
+function showUserInfo(user) {
+    document.getElementById('userInfo').classList.remove('d-none');
+    document.getElementById('signInBtn').classList.add('d-none');
+    document.getElementById('signOutBtn').classList.remove('d-none');
+    
+    document.getElementById('userName').textContent = user.displayName || 'غير محدد';
+    document.getElementById('userEmail').textContent = user.email || 'غير محدد';
+    document.getElementById('userId').textContent = user.uid || 'غير محدد';
+    
+    if (user.photoURL) {
+        document.getElementById('userPhoto').src = user.photoURL;
+        document.getElementById('userPhotoContainer').classList.remove('d-none');
+    } else {
+        document.getElementById('userPhotoContainer').classList.add('d-none');
+    }
+}
+
+function hideUserInfo() {
+    document.getElementById('userInfo').classList.add('d-none');
+    document.getElementById('signInBtn').classList.remove('d-none');
+    document.getElementById('signOutBtn').classList.add('d-none');
+}
+
+function signInWithGoogle() {
+    updateStatus('جاري تسجيل الدخول...', 'warning');
+    
+    auth.signInWithPopup(provider)
+        .then((result) => {
+            console.log('Google sign-in successful:', result.user);
+            updateStatus('تم تسجيل الدخول بنجاح!', 'success');
+            showUserInfo(result.user);
+        })
+        .catch((error) => {
+            console.error("Authentication Error:", error);
+            let errorMessage = 'حدث خطأ أثناء تسجيل الدخول';
+            if (error.code === 'auth/popup-closed-by-user') {
+                errorMessage = 'تم إغلاق نافذة تسجيل الدخول';
+            } else if (error.code === 'auth/popup-blocked') {
+                errorMessage = 'تم حظر النافذة المنبثقة، يرجى السماح بالنوافذ المنبثقة';
+            }
+            updateStatus(errorMessage, 'danger');
+        });
+}
+
+function signOutFromFirebase() {
+    updateStatus('جاري تسجيل الخروج...', 'warning');
+    
+    auth.signOut()
+        .then(() => {
+            console.log('Firebase sign-out successful');
+            updateStatus('تم تسجيل الخروج بنجاح!', 'success');
+            hideUserInfo();
+        })
+        .catch((error) => {
+            console.error('Sign-out error:', error);
+            updateStatus('حدث خطأ أثناء تسجيل الخروج', 'danger');
+        });
+}
+
+// Listen for auth state changes
+auth.onAuthStateChanged((user) => {
+    if (user) {
+        console.log('User is signed in:', user);
+        updateStatus('تم تسجيل الدخول بنجاح!', 'success');
+        showUserInfo(user);
+    } else {
+        console.log('User is signed out');
+        updateStatus('لم يتم تسجيل الدخول بعد', 'info');
+        hideUserInfo();
+    }
+});
+
+// Check Firebase configuration
+if (typeof firebase !== 'undefined') {
+    updateStatus('تم تحميل Firebase بنجاح', 'success');
+} else {
+    updateStatus('فشل في تحميل Firebase', 'danger');
+}
+</script>
+
+<%- include('../layout') %> 

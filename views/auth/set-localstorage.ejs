@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>تسجيل الدخول...</title>
+</head>
+<body>
+<script>
+  // Set user info in localStorage
+  localStorage.setItem('user', JSON.stringify({
+    displayName: "<%= user.displayName || user.username %>",
+    email: "<%= user.email %>",
+    photoURL: "<%= user.photoURL || '' %>"
+  }));
+  // Redirect to dashboard
+  window.location.href = "/leader/dashboard";
+</script>
+<p>جاري تسجيل الدخول...</p>
+</body>
+</html> 

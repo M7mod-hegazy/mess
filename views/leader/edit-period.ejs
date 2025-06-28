@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تعديل الفترة - نظام إدارة الوجبات</title>
+  <!-- Bootstrap CSS RTL -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <!-- Custom Responsive CSS -->
+  <link rel="stylesheet" href="/css/responsive.css">
+</head>
+<body>
+<div id="interactive-bg"></div>
+<%- include('../navbar', { activePage: 'dashboard' }) %>
+    <div class="container py-4">
+        <div class="period-form">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>تعديل الفترة</h1>
+                <a href="/leader/dashboard%>" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> العودة إلى التفاصيل
+                </a>
+            </div>
+
+            <% if (locals.error) { %>
+                <div class="alert alert-danger" role="alert">
+                    <%= error %>
+                </div>
+            <% } %>
+
+            <div class="card">
+                <div class="card-body">
+                    <form action="/leader/period/<%= period._id %>" method="POST" onsubmit="return validateDates()">
+                        <div class="mb-3">
+                            <label class="form-label">اسم القائد</label>
+                            <input type="text" class="form-control" name="leaderName" 
+                                   value="<%= period.leaderName %>" required>
+                        </div>
+                        
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">تاريخ البدء</label>
+                                <input type="date" class="form-control" name="startDate" 
+                                       value="<%= period.startDate.toISOString().split('T')[0] %>" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">تاريخ الانتهاء</label>
+                                <input type="date" class="form-control" name="endDate" 
+                                       value="<%= period.endDate.toISOString().split('T')[0] %>" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">الوصف</label>
+                            <textarea class="form-control" name="description" rows="3"><%= period.description || '' %></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="isActive" 
+                                       <%= period.isActive ? 'checked' : '' %>>
+                                <label class="form-check-label">الفترة النشطة</label>
+                            </div>
+                            <div class="form-text">يمكن أن تكون هناك فترة نشطة واحدة فقط في كل مرة.</div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg"></i> تحديث الفترة
+                            </button>
+                        </div>
+                        <% if (!period.isActive) { %>
+                            <div class="d-grid gap-2 mt-3">
+                                <button type="button" class="btn btn-danger" onclick="confirmDeletePeriod()">
+                                    <i class="bi bi-trash"></i> حذف الفترة
+                                </button>
+                            </div>
+                        <% } else { %>
+                            <div class="d-grid gap-2 mt-3">
+                                <button type="button" class="btn btn-danger" onclick="showActiveRefusePopup()">
+                                    <i class="bi bi-trash"></i> حذف الفترة
+                                </button>
+                            </div>
+                        <% } %>
+                    </form>
+                    <!-- Delete form - always available but only used for inactive periods -->
+                    <form id="deletePeriodForm" action="/leader/period/<%= period._id %>/delete" method="POST" style="display:none"></form>
+                </div>
+            </div>
+
+            <!-- Period Statistics -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">إحصائيات الفترة</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <div class="border rounded p-3">
+                                <div class="text-muted mb-1">إجمالي الوجبات</div>
+                                <div class="h4 mb-0"><%= periodStats.totalMeals %></div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="border rounded p-3">
+                                <div class="text-muted mb-1">التكلفة الإجمالية</div>
+                                <div class="h4 mb-0">$<%= periodStats.totalCost.toFixed(2) %></div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="border rounded p-3">
+                                <div class="text-muted mb-1">التكاليف العادية</div>
+                                <div class="h4 mb-0">$<%= periodStats.totalNormalCost.toFixed(2) %></div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="border rounded p-3">
+                                <div class="text-muted mb-1">التكاليف الأخرى</div>
+                                <div class="h4 mb-0">$<%= periodStats.totalOthersCost.toFixed(2) %></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<%- include('../footer') %>
+
+    <script>
+        function validateDates() {
+            const startDate = new Date(document.querySelector('input[name="startDate"]').value);
+            const endDate = new Date(document.querySelector('input[name="endDate"]').value);
+            
+            if (startDate > endDate) {
+                alert('يجب أن يكون تاريخ الانتهاء بعد تاريخ البدء');
+                return false;
+            }
+            return true;
+        }
+        function confirmDeletePeriod() {
+            // Check if period is active by looking for the active checkbox
+            const isActiveCheckbox = document.querySelector('input[name="isActive"]');
+            const isActive = isActiveCheckbox && isActiveCheckbox.checked;
+            
+            if (isActive) {
+                alert('لا يمكنك حذف فترة نشطة. يرجى إلغاء تنشيطها أولاً.');
+                return;
+            }
+            
+            if (confirm('هل أنت متأكد أنك تريد حذف هذه الفترة؟ لا يمكن التراجع عن هذا الإجراء.')) {
+                const deleteForm = document.getElementById('deletePeriodForm');
+                if (deleteForm) {
+                    deleteForm.submit();
+                } else {
+                    console.error('Delete form not found');
+                    alert('خطأ: لم يتم العثور على نموذج الحذف');
+                }
+            }
+        }
+        function showActiveRefusePopup() {
+            alert('لا يمكنك حذف فترة نشطة. يرجى إلغاء تنشيطها أولاً.');
+        }
+    </script>
+
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+<script>
+  const bg = document.getElementById('interactive-bg');
+  bg.style.position = 'fixed';
+  bg.style.top = 0;
+  bg.style.left = 0;
+  bg.style.width = '100vw';
+  bg.style.height = '100vh';
+  bg.style.zIndex = 0;
+  bg.style.pointerEvents = 'none';
+  bg.style.background = 'transparent';
+  particlesJS('interactive-bg', {
+    particles: {
+      number: { value: 120, density: { enable: true, value_area: 800 } },
+      color: { value: '#000' },
+      shape: { type: 'circle' },
+      opacity: { value: 0.3, random: true },
+      size: { value: 3, random: true },
+      line_linked: {
+        enable: true,
+        distance: 120,
+        color: '#000',
+        opacity: 0.18,
+        width: 1
+      },
+      move: {
+        enable: true,
+        speed: 2,
+        direction: 'none',
+        random: false,
+        straight: false,
+        out_mode: 'out',
+        bounce: false,
+        attract: { enable: true, rotateX: 600, rotateY: 1200 }
+      }
+    },
+    interactivity: {
+      detect_on: 'canvas',
+      events: {
+        onhover: { enable: true, mode: ['grab', 'bubble', 'repulse'] },
+        onclick: { enable: true, mode: 'push' },
+        resize: true
+      },
+      modes: {
+        grab: { distance: 140, line_linked: { opacity: 0.35 } },
+        bubble: { distance: 200, size: 6, duration: 2, opacity: 0.6, speed: 3 },
+        repulse: { distance: 100, duration: 0.4 },
+        push: { particles_nb: 4 }
+      }
+    },
+    retina_detect: true
+  });
+</script>
+</body>
+</html>

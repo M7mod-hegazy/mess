@@ -1,0 +1,177 @@
+<div id="interactive-bg"></div>
+<div class="container" style="position:relative;z-index:1;">
+    <div class="row justify-content-center mt-4 mt-md-5">
+        <div class="col-sm-10 col-md-8 col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="bi bi-person-plus me-2"></i>التسجيل كقائد</h4>
+                </div>
+                <div class="card-body p-4">
+                    <% if (locals.error) { %>
+                        <div class="alert alert-danger d-flex align-items-center" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            <div><%= error %></div>
+                        </div>
+                    <% } %>
+                    <form method="POST" action="/auth/register">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">اسم المستخدم</label>
+                            <input type="text" class="form-control" id="username" name="username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">البريد الإلكتروني</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">كلمة المرور</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirmPassword" class="form-label">تأكيد كلمة المرور</label>
+                            <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">تسجيل</button>
+                    </form>
+                    <hr>
+                    <!-- Google Sign-Up Button -->
+                    <button id="googleSignInBtn" class="btn btn-danger w-100 mt-3" onclick="signInWithGoogle()">
+                        <i class="bi bi-google me-2"></i>التسجيل باستخدام جوجل
+                    </button>
+                    <!-- Loading spinner for Google auth -->
+                    <div id="googleAuthLoading" class="alert alert-info d-none mt-3" role="alert">
+                        <div class="d-flex align-items-center">
+                            <div class="spinner-border spinner-border-sm me-2" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            جاري التسجيل باستخدام جوجل...
+                        </div>
+                    </div>
+                    <form id="googleTokenForm" method="POST" action="/auth/authenticate-google" style="display:none;">
+                        <input type="hidden" name="idToken" id="googleIdTokenInput">
+                        <input type="hidden" name="displayName" id="googleDisplayNameInput">
+                        <input type="hidden" name="email" id="googleEmailInput">
+                        <input type="hidden" name="photoURL" id="googlePhotoURLInput">
+                        <input type="hidden" name="isRegistration" value="true">
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div><script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+<script>
+  const bg = document.getElementById('interactive-bg');
+  bg.style.position = 'fixed';
+  bg.style.top = 0;
+  bg.style.left = 0;
+  bg.style.width = '100vw';
+  bg.style.height = '100vh';
+  bg.style.zIndex = 0;
+  bg.style.pointerEvents = 'none';
+  bg.style.background = 'transparent';
+  particlesJS('interactive-bg', {
+    particles: {
+      number: { value: 120, density: { enable: true, value_area: 800 } },
+      color: { value: '#000' },
+      shape: { type: 'circle' },
+      opacity: { value: 0.3, random: true },
+      size: { value: 3, random: true },
+      line_linked: {
+        enable: true,
+        distance: 120,
+        color: '#000',
+        opacity: 0.18,
+        width: 1
+      },
+      move: {
+        enable: true,
+        speed: 2,
+        direction: 'none',
+        random: false,
+        straight: false,
+        out_mode: 'out',
+        bounce: false,
+        attract: { enable: true, rotateX: 600, rotateY: 1200 }
+      }
+    },
+    interactivity: {
+      detect_on: 'canvas',
+      events: {
+        onhover: { enable: true, mode: ['grab', 'bubble', 'repulse'] },
+        onclick: { enable: true, mode: 'push' },
+        resize: true
+      },
+      modes: {
+        grab: { distance: 140, line_linked: { opacity: 0.35 } },
+        bubble: { distance: 200, size: 6, duration: 2, opacity: 0.6, speed: 3 },
+        repulse: { distance: 100, duration: 0.4 },
+        push: { particles_nb: 4 }
+      }
+    },
+    retina_detect: true
+  });
+
+  // Only declare auth if not already declared
+  if (typeof window.auth === 'undefined') {
+    window.auth = firebase.auth();
+  }
+  if (typeof window.provider === 'undefined') {
+    window.provider = new firebase.auth.GoogleAuthProvider();
+    window.provider.addScope('email');
+    window.provider.addScope('profile');
+  }
+
+  function showLoading() {
+    document.getElementById('googleAuthLoading').classList.remove('d-none');
+    document.getElementById('googleSignInBtn').disabled = true;
+  }
+
+  function hideLoading() {
+    document.getElementById('googleAuthLoading').classList.add('d-none');
+    document.getElementById('googleSignInBtn').disabled = false;
+  }
+
+  function showError(message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-danger d-flex align-items-center';
+    alertDiv.innerHTML = `
+      <i class=\"bi bi-exclamation-triangle-fill me-2\"></i>
+      <div>${message}</div>
+    `;
+    const cardBody = document.querySelector('.card-body');
+    cardBody.insertBefore(alertDiv, cardBody.firstChild);
+    setTimeout(() => { alertDiv.remove(); }, 5000);
+  }
+
+  window.signInWithGoogle = function() {
+    showLoading();
+    window.auth.signInWithPopup(window.provider)
+      .then((result) => result.user.getIdToken().then((idToken) => {
+        // Store user info in localStorage
+        const userInfo = {
+          displayName: window.auth.currentUser.displayName,
+          email: window.auth.currentUser.email,
+          photoURL: window.auth.currentUser.photoURL,
+          idToken: idToken
+        };
+        localStorage.setItem('user', JSON.stringify(userInfo));
+        document.getElementById('googleIdTokenInput').value = idToken;
+        document.getElementById('googleDisplayNameInput').value = window.auth.currentUser.displayName || '';
+        document.getElementById('googleEmailInput').value = window.auth.currentUser.email || '';
+        document.getElementById('googlePhotoURLInput').value = window.auth.currentUser.photoURL || '';
+        document.getElementById('googleTokenForm').submit();
+      }))
+      .catch((error) => {
+        hideLoading();
+        let errorMessage = 'حدث خطأ أثناء التسجيل';
+        if (error.code === 'auth/popup-closed-by-user') {
+          errorMessage = 'تم إغلاق نافذة التسجيل';
+        } else if (error.code === 'auth/popup-blocked') {
+          errorMessage = 'تم حظر النافذة المنبثقة، يرجى السماح بالنوافذ المنبثقة';
+        } else if (error.code === 'auth/cancelled-popup-request') {
+          errorMessage = 'تم إلغاء طلب التسجيل';
+        }
+        showError(errorMessage);
+      });
+  }
+</script> 

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>نظام إدارة الوجبات</title>
+  <!-- Bootstrap CSS RTL -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <!-- Animate.css for entry animations -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+  <!-- Custom Responsive CSS -->
+  <link rel="stylesheet" href="/css/responsive.css">
+</head>
+<body style="display:flex;flex-direction:column;min-height:100vh;">
+<div id="interactive-bg"></div>
+<nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top sticky-top">
+    <div class="container">
+        <a class="navbar-brand" href="/">إدارة الوجبات</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="#navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <a class="nav-link py-2" href="/user"><i class="bi bi-calendar-week d-none d-sm-inline me-1"></i>عرض الفترات</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link py-2" href="/user/statistics"><i class="bi bi-bar-chart d-none d-sm-inline me-1"></i>الإحصائيات</a>
+                </li>
+            </ul>
+            <hr class="d-lg-none">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link py-2" href="/auth/login"><i class="bi bi-box-arrow-in-right d-none d-sm-inline me-1"></i>تسجيل الدخول</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link py-2" href="/auth/register"><i class="bi bi-person-plus d-none d-sm-inline me-1"></i>التسجيل</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+<div class="main-content flex-grow-1" id="home-main-content">
+  <div class="container-fluid min-vh-100 d-flex flex-column justify-content-center align-items-center" style="padding-bottom: 0;">
+    <div class="row w-100 flex-grow-1 d-flex align-items-center justify-content-center">
+    <div class="col-12 col-lg-10 offset-lg-1">
+        <div class="text-center my-4 my-md-5">
+            <h1 class="display-4">مرحبًا بك في نظام إدارة الوجبات</h1>
+            <p class="lead text-muted">قم بإدارة وجباتك المشتركة وتكاليفها بسهولة</p>
+        </div>
+        <!-- Modern Two-Choice Block - Responsive Version -->
+          <div class="row justify-content-center align-items-stretch">
+            <!-- User Block -->
+            <div class="col-12 col-md-6 mb-4 mb-md-0 d-flex align-items-stretch">
+              <div id="user-card" class="card shadow border-0 h-100 w-100 text-center card-content-invisible" style="border-radius: 1.5rem;">
+                <div class="card-body d-flex flex-column justify-content-center align-items-center p-5 min-vh-50">
+                  <div id="user-card-icon-title" class="card-content-invisible">
+                    <i class="bi bi-person-circle d-block mb-3" style="font-size: 2.5rem; color: #28a745;"></i>
+                    <h2 class="mb-4">مستخدم</h2>
+                  </div>
+                  <div id="user-card-btn" class="card-content-invisible w-100">
+                    <a href="/user" class="btn btn-success btn-lg px-4 w-100">انضم</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Leader Block -->
+            <div class="col-12 col-md-6 mt-4 mt-md-0 d-flex align-items-stretch">
+              <div id="leader-card" class="card shadow border-0 h-100 w-100 text-center card-content-invisible" style="border-radius: 1.5rem;">
+                <div class="card-body d-flex flex-column justify-content-center align-items-center p-5 min-vh-50">
+                  <div id="leader-card-icon-title" class="card-content-invisible">
+                    <i class="bi bi-person-badge d-block mb-3" style="font-size: 2.5rem; color: #0d6efd;"></i>
+                    <h2 class="mb-4">قائد</h2>
+                  </div>
+                  <div id="leader-card-btn" class="card-content-invisible w-100">
+                    <div class="d-grid gap-3 w-100">
+                      <a href="/auth/login" class="btn btn-primary btn-lg">تسجيل الدخول</a>
+                      <a href="/auth/register" class="btn btn-outline-primary btn-lg">تسجيل جديد</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+    </div>
+  </div>
+</div>
+<!-- Footer -->
+<%- include('footer') %>
+<!-- JS scripts at the end -->
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+<script src="/js/particles-bg.js"></script>
+<script>
+  particlesJS('interactive-bg', {
+    particles: {
+      number: { value: 120, density: { enable: true, value_area: 800 } },
+      color: { value: '#000' },
+      shape: { type: 'circle' },
+      opacity: { value: 0.3, random: true },
+      size: { value: 3, random: true },
+      line_linked: {
+        enable: true,
+        distance: 120,
+        color: '#000',
+        opacity: 0.18,
+        width: 1
+      },
+      move: {
+        enable: true,
+        speed: 2,
+        direction: 'none',
+        random: false,
+        straight: false,
+        out_mode: 'out',
+        bounce: false,
+        attract: { enable: true, rotateX: 600, rotateY: 1200 }
+      }
+    },
+    interactivity: {
+      detect_on: 'canvas',
+      events: {
+        onhover: { enable: true, mode: ['grab', 'bubble', 'repulse'] },
+        onclick: { enable: true, mode: 'push' },
+        resize: true
+      },
+      modes: {
+        grab: { distance: 140, line_linked: { opacity: 0.35 } },
+        bubble: { distance: 200, size: 6, duration: 2, opacity: 0.6, speed: 3 },
+        repulse: { distance: 100, duration: 0.4 },
+        push: { particles_nb: 4 }
+      }
+    },
+    retina_detect: true
+  });
+
+  document.addEventListener('DOMContentLoaded', function() {
+    // Main content entry animation
+    document.getElementById('home-main-content').classList.add('home-entry-animate');
+    // Animate both card backgrounds at the same time
+    setTimeout(function() {
+      var userCard = document.getElementById('user-card');
+      var leaderCard = document.getElementById('leader-card');
+      userCard.classList.remove('card-content-invisible');
+      userCard.classList.add('card-animate-right');
+      leaderCard.classList.remove('card-content-invisible');
+      leaderCard.classList.add('card-animate-left');
+      // Animate user card icon+title from top
+      setTimeout(function() {
+        var userIconTitle = document.getElementById('user-card-icon-title');
+        userIconTitle.classList.remove('card-content-invisible');
+        userIconTitle.classList.add('animate__animated', 'animate__fadeInDown');
+        // Animate user card button from bottom
+        setTimeout(function() {
+          var userBtn = document.getElementById('user-card-btn');
+          userBtn.classList.remove('card-content-invisible');
+          userBtn.classList.add('animate__animated', 'animate__fadeInUp');
+        }, 250);
+      }, 250);
+      // Animate leader card icon+title from top
+      setTimeout(function() {
+        var leaderIconTitle = document.getElementById('leader-card-icon-title');
+        leaderIconTitle.classList.remove('card-content-invisible');
+        leaderIconTitle.classList.add('animate__animated', 'animate__fadeInDown');
+        // Animate leader card button from bottom
+        setTimeout(function() {
+          var leaderBtn = document.getElementById('leader-card-btn');
+          leaderBtn.classList.remove('card-content-invisible');
+          leaderBtn.classList.add('animate__animated', 'animate__fadeInUp');
+        }, 250);
+      }, 250);
+    }, 400);
+  });
+</script>
+<style>
+  .main-content { flex: 1 0 auto; }
+  .invisible { visibility: hidden; }
+  .card-content-invisible { visibility: hidden; }
+</style>
+</body>
+</html>
