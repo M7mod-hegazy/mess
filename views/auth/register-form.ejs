@@ -32,12 +32,32 @@
                         </div>
                         <button type="submit" class="btn btn-primary w-100">تسجيل</button>
                     </form>
+                    <hr>
+                    <!-- Google Sign-Up Button -->
+                    <button id="googleSignInBtn" class="btn btn-danger w-100 mt-3" onclick="signInWithGoogle()">
+                        <i class="bi bi-google me-2"></i>التسجيل باستخدام جوجل
+                    </button>
+                    <!-- Loading spinner for Google auth -->
+                    <div id="googleAuthLoading" class="alert alert-info d-none mt-3" role="alert">
+                        <div class="d-flex align-items-center">
+                            <div class="spinner-border spinner-border-sm me-2" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            جاري التسجيل باستخدام جوجل...
+                        </div>
+                    </div>
+                    <form id="googleTokenForm" method="POST" action="/auth/authenticate-google" style="display:none;">
+                        <input type="hidden" name="idToken" id="googleIdTokenInput">
+                        <input type="hidden" name="displayName" id="googleDisplayNameInput">
+                        <input type="hidden" name="email" id="googleEmailInput">
+                        <input type="hidden" name="photoURL" id="googlePhotoURLInput">
+                        <input type="hidden" name="isRegistration" value="true">
+                    </form>
                 </div>
             </div>
         </div>
     </div>
-</div>
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+</div><script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
 <script>
   const bg = document.getElementById('interactive-bg');
@@ -90,4 +110,68 @@
     },
     retina_detect: true
   });
+
+  // Only declare auth if not already declared
+  if (typeof window.auth === 'undefined') {
+    window.auth = firebase.auth();
+  }
+  if (typeof window.provider === 'undefined') {
+    window.provider = new firebase.auth.GoogleAuthProvider();
+    window.provider.addScope('email');
+    window.provider.addScope('profile');
+  }
+
+  function showLoading() {
+    document.getElementById('googleAuthLoading').classList.remove('d-none');
+    document.getElementById('googleSignInBtn').disabled = true;
+  }
+
+  function hideLoading() {
+    document.getElementById('googleAuthLoading').classList.add('d-none');
+    document.getElementById('googleSignInBtn').disabled = false;
+  }
+
+  function showError(message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-danger d-flex align-items-center';
+    alertDiv.innerHTML = `
+      <i class=\"bi bi-exclamation-triangle-fill me-2\"></i>
+      <div>${message}</div>
+    `;
+    const cardBody = document.querySelector('.card-body');
+    cardBody.insertBefore(alertDiv, cardBody.firstChild);
+    setTimeout(() => { alertDiv.remove(); }, 5000);
+  }
+
+  window.signInWithGoogle = function() {
+    showLoading();
+    window.auth.signInWithPopup(window.provider)
+      .then((result) => result.user.getIdToken().then((idToken) => {
+        // Store user info in localStorage
+        const userInfo = {
+          displayName: window.auth.currentUser.displayName,
+          email: window.auth.currentUser.email,
+          photoURL: window.auth.currentUser.photoURL,
+          idToken: idToken
+        };
+        localStorage.setItem('user', JSON.stringify(userInfo));
+        document.getElementById('googleIdTokenInput').value = idToken;
+        document.getElementById('googleDisplayNameInput').value = window.auth.currentUser.displayName || '';
+        document.getElementById('googleEmailInput').value = window.auth.currentUser.email || '';
+        document.getElementById('googlePhotoURLInput').value = window.auth.currentUser.photoURL || '';
+        document.getElementById('googleTokenForm').submit();
+      }))
+      .catch((error) => {
+        hideLoading();
+        let errorMessage = 'حدث خطأ أثناء التسجيل';
+        if (error.code === 'auth/popup-closed-by-user') {
+          errorMessage = 'تم إغلاق نافذة التسجيل';
+        } else if (error.code === 'auth/popup-blocked') {
+          errorMessage = 'تم حظر النافذة المنبثقة، يرجى السماح بالنوافذ المنبثقة';
+        } else if (error.code === 'auth/cancelled-popup-request') {
+          errorMessage = 'تم إلغاء طلب التسجيل';
+        }
+        showError(errorMessage);
+      });
+  }
 </script> 

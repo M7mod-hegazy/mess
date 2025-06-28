@@ -144,11 +144,30 @@ router.get('/statistics', async (req, res) => {
 // Share page
 router.get('/share', async (req, res) => {
     try {
-        const leaderId = req.session.userId;
-        if (!leaderId) return res.redirect('/auth/login');
-
-        const leader = await User.findById(leaderId);
-        if (!leader) return res.status(404).send('Leader not found');
+        let leaderId = req.session.userId;
+        let leader = null;
+        
+        // If no session userId, try to find the user from recent periods
+        if (!leaderId) {
+            console.log('Share page - No session userId, checking for Google user...');
+            const allPeriods = await Period.find().sort({ createdAt: -1 }).limit(1);
+            if (allPeriods.length > 0) {
+                const recentPeriod = allPeriods[0];
+                leader = await User.findById(recentPeriod.leaderId);
+                leaderId = recentPeriod.leaderId;
+                console.log('Share page - Found user from recent period:', leader ? leader._id : 'No user');
+            }
+        } else {
+            leader = await User.findById(leaderId);
+        }
+        
+        if (!leader) {
+            console.log('Share page - No leader found, redirecting to login');
+            return res.redirect('/auth/login');
+        }
+        
+        console.log('Share page - Using leaderId:', leaderId);
+        console.log('Share page - Leader managedParticipants:', leader.managedParticipants?.length || 0);
         
         const allManagedParticipants = leader.managedParticipants || [];
 
@@ -160,14 +179,14 @@ router.get('/share', async (req, res) => {
 
         if (selectedPeriodId) {
             selectedPeriod = await Period.findById(selectedPeriodId);
-        if (selectedPeriod) {
+            if (selectedPeriod) {
                 if (selectedPeriod.shareTable && selectedPeriod.shareTable.length > 0) {
                     participants = selectedPeriod.shareTable.filter(row => row.name !== 'Total').map(row => ({ 
                         name: row.name, 
-                        numbers: [row.num], 
+                        num: row.num, 
                         note: row.note 
                     }));
-                const totalRow = selectedPeriod.shareTable.find(row => row.name === 'Total');
+                    const totalRow = selectedPeriod.shareTable.find(row => row.name === 'Total');
                     if (totalRow) totalSum = totalRow.num;
                 }
 
@@ -176,6 +195,8 @@ router.get('/share', async (req, res) => {
             }
         }
         
+        console.log('Share page - Addable participants:', addableParticipants.length);
+        console.log('Share page - participants:', participants);
         res.render('user/share', { 
             periods, 
             activePeriod, 
@@ -184,6 +205,7 @@ router.get('/share', async (req, res) => {
             participants,
             totalSum,
             addableParticipants,
+            allManagedParticipants,
             user: res.locals.user // Pass user for navbar
         });
     } catch (error) {
@@ -195,39 +217,97 @@ router.get('/share', async (req, res) => {
 // Save share table data
 router.post('/share/save', async (req, res) => {
     try {
+        console.log('Save share - Request received');
+        console.log('Save share - Query:', req.query);
+        console.log('Save share - Body:', req.body);
+        console.log('Save share - Headers:', req.headers);
+        
         const { period } = req.query;
         const { data } = req.body;
-        if (!period || !Array.isArray(data)) return res.json({ success: false, error: 'Invalid data' });
+        
+        console.log('Save share - Period:', period);
+        console.log('Save share - Data:', data);
+        
+        if (!period || !Array.isArray(data)) {
+            console.log('Save share - Invalid data received');
+            return res.json({ success: false, error: 'Invalid data' });
+        }
+        
         const periodDoc = await Period.findById(period);
-        if (!periodDoc) return res.json({ success: false, error: 'Period not found' });
+        if (!periodDoc) {
+            console.log('Save share - Period not found:', period);
+            return res.json({ success: false, error: 'Period not found' });
+        }
+        
+        // Check authorization - allow both session users and period owner
+        let userId = req.session.userId;
+        
+        // If no session userId, try to find the user from the period
+        if (!userId) {
+            console.log('Save share - No session userId, checking period...');
+            userId = periodDoc.leaderId;
+            console.log('Save share - Found userId from period:', userId);
+        }
+        
         // Only allow the period maker
-        if (!req.session.userId || periodDoc.leaderId.toString() !== req.session.userId.toString()) {
+        if (!userId || periodDoc.leaderId.toString() !== userId.toString()) {
+            console.log('Save share - Not authorized. userId:', userId, 'period.leaderId:', periodDoc.leaderId);
             return res.json({ success: false, error: 'Not authorized' });
         }
-        periodDoc.shareTable = data;
+        
+        // Add total row to the data
+        const totalSum = data.reduce((sum, item) => sum + (parseFloat(item.num) || 0), 0);
+        const dataWithTotal = [...data, { name: 'Total', num: totalSum, note: '' }];
+        
+        console.log('Save share - Data with total:', dataWithTotal);
+        
+        periodDoc.shareTable = dataWithTotal;
         await periodDoc.save();
+        
+        console.log('Save share - Successfully saved share table');
         res.json({ success: true });
     } catch (error) {
-        res.json({ success: false, error: 'Server error' });
+        console.error('Save share - Error:', error);
+        res.json({ success: false, error: 'Server error: ' + error.message });
     }
 });
 
 // Add participant to a period's shareTable
 router.post('/share/participants', async (req, res) => {
     const { name, periodId } = req.body;
-    const leaderId = req.session.userId;
+    let leaderId = req.session.userId;
+
+    // If no session userId, try to find the user from the period
+    if (!leaderId) {
+        console.log('Add participant - No session userId, checking period...');
+        try {
+            const period = await Period.findById(periodId);
+            if (period) {
+                leaderId = period.leaderId;
+                console.log('Add participant - Found leaderId from period:', leaderId);
+            }
+        } catch (err) {
+            console.error('Add participant - Error finding period:', err);
+        }
+    }
 
     if (!name || !periodId || !leaderId) {
+        console.log('Add participant - Missing data:', { name, periodId, leaderId });
         return res.status(400).redirect(req.get('referer') || '/user/share');
     }
+    
     try {
+        console.log('Add participant - Adding participant:', { name, periodId, leaderId });
         await Period.updateOne(
             { _id: periodId, leaderId: leaderId },
             { $addToSet: { shareTable: { name: name, num: 0, note: '' } } }
         );
+        // Log the updated shareTable
+        const updatedPeriod = await Period.findById(periodId);
+        console.log('Add participant - Updated shareTable:', updatedPeriod.shareTable);
         res.redirect(req.get('referer') || '/user/share');
     } catch (error) {
-        console.error(error);
+        console.error('Add participant - Error:', error);
         res.status(500).redirect(req.get('referer') || '/user/share');
     }
 });
@@ -235,19 +315,37 @@ router.post('/share/participants', async (req, res) => {
 // Delete participant from a period's shareTable
 router.post('/share/participants/delete', async (req, res) => {
     const { name, periodId } = req.body;
-    const leaderId = req.session.userId;
+    let leaderId = req.session.userId;
+
+    // If no session userId, try to find the user from the period
+    if (!leaderId) {
+        console.log('Delete participant - No session userId, checking period...');
+        try {
+            const period = await Period.findById(periodId);
+            if (period) {
+                leaderId = period.leaderId;
+                console.log('Delete participant - Found leaderId from period:', leaderId);
+            }
+        } catch (err) {
+            console.error('Delete participant - Error finding period:', err);
+        }
+    }
 
     if (!name || !periodId || !leaderId) {
+        console.log('Delete participant - Missing data:', { name, periodId, leaderId });
         return res.status(400).redirect(req.get('referer') || '/user/share');
     }
+    
     try {
+        console.log('Delete participant - Deleting participant:', { name, periodId, leaderId });
         await Period.updateOne(
             { _id: periodId, leaderId: leaderId },
             { $pull: { shareTable: { name: name } } }
         );
+        console.log('Delete participant - Successfully deleted participant');
         res.redirect(req.get('referer') || '/user/share');
     } catch (error) {
-        console.error(error);
+        console.error('Delete participant - Error:', error);
         res.status(500).redirect(req.get('referer') || '/user/share');
     }
 });

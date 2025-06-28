@@ -21,9 +21,16 @@ const User = require('./models/User');
 
 const app = express();
 
+const admin = require('firebase-admin');
+const serviceAccount = require('./mess-3be39-firebase-adminsdk-fbsvc-6e83a4aa68.json');
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
 // Configure CORS
 app.use(cors({
-  origin: true, // Allow requests from any origin
+  origin: process.env.NODE_ENV === 'production' ? 'your-production-domain.com' : 'http://localhost:3001', // Allow requests from specific origin
   credentials: true, // Allow credentials (cookies) to be sent with requests
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -50,14 +57,12 @@ app.engine('ejs', engine);
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-
-
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Body parser middleware
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
+// Body parser middleware - use Express built-in parsers
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Session middleware
 app.use(session({
@@ -67,13 +72,13 @@ app.use(session({
   store: MongoStore.create({ mongoUrl: MONGO_URI }),
   cookie: {
     httpOnly: true,
-    secure: false, // Set to false for local development
-    sameSite: 'lax', // Helps with CSRF
+    secure: false, // Set to false for localhost development
+    sameSite: 'lax', // Use 'lax' for localhost
     maxAge: 7 * 24 * 60 * 60 * 1000 // Session expires in 7 days
   }
 }));
 
-// Load user data for all routes
+// Load user data for all routes (BEFORE routes)
 app.use(async (req, res, next) => {
   if (req.session.userId) {
     try {
@@ -93,6 +98,12 @@ app.use('/auth', authRoutes);
 
 // Basic route for testing
 app.get('/', (req, res) => {
+  // Check if user is logged in
+  if (req.session.userId) {
+    // User is logged in, redirect to dashboard
+    return res.redirect('/leader/dashboard');
+  }
+  // No authenticated user found, show the index page
   res.render('index');
 });
 

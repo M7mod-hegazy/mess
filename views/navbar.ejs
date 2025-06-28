@@ -1,6 +1,6 @@
 <nav class="navbar navbar-expand-lg navbar-light bg-light sticky-top">
     <div class="container">
-        <a class="navbar-brand" href="/">إدارة الوجبات</a>
+        <a class="navbar-brand" href="/" id="navbarBrand">إدارة الوجبات</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -25,22 +25,134 @@
             </ul>
             <hr class="d-lg-none">
             <ul class="navbar-nav">
+                <!-- Guest links -->
+                <li class="nav-item nav-guest">
+                    <a class="nav-link py-2" href="/auth/login"><i class="bi bi-box-arrow-in-right d-none d-sm-inline me-1"></i>تسجيل الدخول</a>
+                </li>
+                <li class="nav-item nav-guest">
+                    <a class="nav-link py-2" href="/auth/register"><i class="bi bi-person-plus d-none d-sm-inline me-1"></i>التسجيل</a>
+                </li>
+                <!-- User links -->
                 <% if (typeof user !== 'undefined' && user) { %>
-                    <li class="nav-item d-flex align-items-center">
-                        <span class="nav-link text-dark py-2"><i class="bi bi-person-circle d-none d-sm-inline me-1"></i>مرحباً، <%= user.username %></span>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link py-2" href="/auth/logout"><i class="bi bi-box-arrow-right d-none d-sm-inline me-1"></i>تسجيل الخروج</a>
-                    </li>
-                <% } else { %>
-                    <li class="nav-item">
-                        <a class="nav-link py-2" href="/auth/login"><i class="bi bi-box-arrow-in-right d-none d-sm-inline me-1"></i>تسجيل الدخول</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link py-2" href="/auth/register"><i class="bi bi-person-plus d-none d-sm-inline me-1"></i>التسجيل</a>
-                    </li>
+                <li class="nav-item d-flex align-items-center nav-user" style="display:none;">
+                    <a class="nav-link text-dark py-2 profile-link <%= (typeof activePage !== 'undefined' && activePage === 'profile') ? 'active fw-bold text-primary' : '' %>" href="/auth/profile" style="text-decoration: none;">
+                        <img class="nav-user-photo me-1" style="width:24px;height:24px;border-radius:50%;display:none;">
+                        <span class="nav-username"></span>
+                        <i class="bi bi-chevron-down ms-1"></i>
+                    </a>
+                </li>
+                <li class="nav-item nav-user" style="display:none;">
+                    <a class="nav-link py-2" href="#" onclick="handleLogout(event)"><i class="bi bi-box-arrow-right d-none d-sm-inline me-1"></i>تسجيل الخروج</a>
+                </li>
                 <% } %>
             </ul>
         </div>
     </div>
-</nav> 
+</nav>
+
+<!-- Firebase scripts for logout functionality -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script src="/js/firebase-auth.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const user = JSON.parse(localStorage.getItem('user'));
+  const navbarBrand = document.getElementById('navbarBrand');
+  
+  if (user) {
+    // Hide guest links
+    document.querySelectorAll('.nav-guest').forEach(el => el.style.display = 'none');
+    // Show user links and update username
+    document.querySelectorAll('.nav-user').forEach(el => el.style.display = '');
+    document.querySelectorAll('.nav-username').forEach(el => el.textContent = user.displayName || user.email);
+    // Show user photo if available
+    if (user.photoURL) {
+      document.querySelectorAll('.nav-user-photo').forEach(el => {
+        el.src = user.photoURL;
+        el.style.display = '';
+      });
+    }
+    
+    // Update brand link to go to dashboard for logged-in users
+    if (navbarBrand) {
+      navbarBrand.href = '/leader/dashboard';
+      navbarBrand.title = 'لوحة تحكم القائد';
+    }
+  } else {
+    // Show guest links, hide user links
+    document.querySelectorAll('.nav-guest').forEach(el => el.style.display = '');
+    document.querySelectorAll('.nav-user').forEach(el => el.style.display = 'none');
+    
+    // Keep brand link pointing to home for guests
+    if (navbarBrand) {
+      navbarBrand.href = '/';
+      navbarBrand.title = 'الرئيسية';
+    }
+  }
+});
+
+// Add CSS for profile link styling
+const style = document.createElement('style');
+style.textContent = `
+  .profile-link {
+    transition: all 0.3s ease;
+    border-radius: 8px;
+    padding: 8px 12px !important;
+  }
+  
+  .profile-link:hover {
+    background-color: rgba(0, 123, 255, 0.1);
+    color: #007bff !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .profile-link.active {
+    background-color: rgba(0, 123, 255, 0.15);
+    color: #007bff !important;
+    font-weight: bold;
+  }
+  
+  .profile-link.active:hover {
+    background-color: rgba(0, 123, 255, 0.2);
+  }
+  
+  .nav-user-photo {
+    transition: transform 0.3s ease;
+  }
+  
+  .profile-link:hover .nav-user-photo {
+    transform: scale(1.1);
+  }
+  
+  .bi-chevron-down {
+    transition: transform 0.3s ease;
+  }
+  
+  .profile-link:hover .bi-chevron-down {
+    transform: translateY(2px);
+  }
+`;
+document.head.appendChild(style);
+
+function handleLogout(event) {
+    event.preventDefault();
+    localStorage.removeItem('user');
+    // Check if Firebase is available and user is signed in
+    if (typeof firebase !== 'undefined' && firebase.auth) {
+        const currentUser = firebase.auth().currentUser;
+        if (currentUser) {
+            // User is signed in with Firebase, use Firebase logout
+            firebaseAuth.signOut();
+        } else {
+            // User is not signed in with Firebase, use regular logout
+            window.location.href = '/auth/logout';
+        }
+    } else {
+        // Firebase is not available, use regular logout
+        window.location.href = '/auth/logout';
+    }
+}
+</script> 

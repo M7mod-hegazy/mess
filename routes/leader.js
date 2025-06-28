@@ -3,6 +3,7 @@ const router = express.Router();
 const Period = require('../models/Period');
 const Meal = require('../models/Meal');
 const User = require('../models/User');
+const admin = require('firebase-admin');
 
 // Helper function to format validation errors
 const formatErrors = (err) => {
@@ -17,10 +18,24 @@ const formatErrors = (err) => {
 // Leader dashboard with period statistics
 router.get('/dashboard', async (req, res) => {
     try {
+        // Always load the user from the session for this request
+        let user = null;
+        if (req.session.userId) {
+            user = await User.findById(req.session.userId);
+        }
+        
+        console.log('Dashboard - Session userId:', req.session.userId);
+        console.log('Dashboard - User found:', user ? user._id : 'No user');
+        console.log('Dashboard - Full session:', req.session);
+        
         const periods = await Period.find({ leaderId: req.session.userId })
             .sort({ startDate: -1 });
+            
+        console.log('Dashboard - Periods found:', periods.length);
+        console.log('Dashboard - Period leaderIds:', periods.map(p => p.leaderId));
+        
         const activePeriod = periods.find(p => p.isActive);
-        const leader = await User.findById(req.session.userId);
+        const leader = user;
 
         // Get meals and calculate period statistics
         let meals = [];
@@ -31,14 +46,16 @@ router.get('/dashboard', async (req, res) => {
                 leaderId: req.session.userId
             }).sort({ date: -1 });
             periodStats = await activePeriod.calculatePeriodStatistics();
-        }        res.render('leader/dashboard', {
+        }
+        res.render('leader/dashboard', {
             activePeriod,
             periods,
             meals,
             periodStats,
-            participants: leader.managedParticipants,
+            participants: leader ? leader.managedParticipants || [] : [],
             error: req.session.error,
-            success: req.session.success
+            success: req.session.success,
+            user // Pass user explicitly for navbar
         });
 
         delete req.session.error;
@@ -52,7 +69,8 @@ router.get('/dashboard', async (req, res) => {
             periodStats: null,
             participants: [],
             error: 'Failed to load dashboard',
-            success: null
+            success: null,
+            user: null
         });
     }
 });
@@ -135,9 +153,30 @@ router.get('/period/:id', async (req, res) => {
 // Edit period form
 router.get('/period/:id/edit', async (req, res) => {
     try {
+        // Load user data for navbar
+        let user = null;
+        if (req.session.userId) {
+            user = await User.findById(req.session.userId);
+        }
+        
+        // If no session userId, try to find the user from the period
+        if (!user) {
+            console.log('Edit period - No session userId, checking period...');
+            const period = await Period.findById(req.params.id);
+            if (period) {
+                user = await User.findById(period.leaderId);
+                console.log('Edit period - Found user from period:', user ? user._id : 'No user');
+            }
+        }
+        
+        if (!user) {
+            console.log('Edit period - No user found, redirecting to login');
+            return res.redirect('/auth/login');
+        }
+        
         const period = await Period.findOne({
             _id: req.params.id,
-            leaderId: req.session.userId
+            leaderId: user._id
         });
 
         if (!period) {
@@ -146,7 +185,7 @@ router.get('/period/:id/edit', async (req, res) => {
         }
 
         const periodStats = await period.calculatePeriodStatistics();
-        res.render('leader/edit-period', { period, periodStats });
+        res.render('leader/edit-period', { period, periodStats, user });
     } catch (error) {
         console.error('Error loading period edit page:', error);
         req.session.error = 'Failed to load period';
@@ -180,18 +219,103 @@ router.post('/period/:id', async (req, res) => {
     }
 });
 
-// Add new meal or update existing meal
-router.post(['/meal', '/meal/:id'], async (req, res) => {
+// Delete period
+router.post('/period/:id/delete', async (req, res) => {
     try {
-        const { date, type, ingredients, participants, periodId } = req.body;
-        
-        // Validate period exists and belongs to leader
         const period = await Period.findOne({
-            _id: periodId,
+            _id: req.params.id,
             leaderId: req.session.userId
         });
 
         if (!period) {
+            req.session.error = 'Period not found';
+            return res.redirect('/leader/dashboard');
+        }
+
+        // Check if period is active
+        if (period.isActive) {
+            req.session.error = 'Cannot delete an active period. Please deactivate it first.';
+            return res.redirect(`/leader/period/${req.params.id}/edit`);
+        }
+
+        // Check if period has meals
+        const mealCount = await Meal.countDocuments({ periodId: req.params.id });
+        if (mealCount > 0) {
+            req.session.error = 'Cannot delete a period that has meals. Please delete all meals first.';
+            return res.redirect(`/leader/period/${req.params.id}/edit`);
+        }
+
+        // Delete the period
+        await Period.findByIdAndDelete(req.params.id);
+        
+        req.session.success = 'Period deleted successfully';
+        res.redirect('/leader/dashboard');
+    } catch (error) {
+        console.error('Error deleting period:', error);
+        req.session.error = 'Failed to delete period';
+        res.redirect(`/leader/period/${req.params.id}/edit`);
+    }
+});
+
+// Add new meal or update existing meal
+router.post(['/meal', '/meal/:id'], async (req, res) => {
+    try {
+        const { date, type, ingredients, participants, periodId, idToken } = req.body;
+        let leaderId = req.session.userId;
+        
+        // If idToken is present, verify and get user
+        if (idToken) {
+            try {
+                const decodedToken = await admin.auth().verifyIdToken(idToken);
+                // Find user by googleId or email
+                let user = await User.findOne({ $or: [
+                    { googleId: decodedToken.uid },
+                    { email: decodedToken.email }
+                ] });
+                if (!user) {
+                    // If not found, create a new user
+                    user = new User({
+                        username: decodedToken.name || decodedToken.email.split('@')[0],
+                        email: decodedToken.email,
+                        displayName: decodedToken.name || '',
+                        photoURL: decodedToken.picture || '',
+                        googleId: decodedToken.uid,
+                        managedParticipants: [],
+                        role: 'leader',
+                        password: await require('bcryptjs').hash(Math.random().toString(36), 10)
+                    });
+                    await user.save();
+                }
+                leaderId = user._id;
+            } catch (err) {
+                console.error('Error verifying idToken for meal creation:', err);
+                if (req.headers['content-type'] && req.headers['content-type'].includes('application/json')) {
+                    return res.status(401).json({ success: false, error: 'Authentication failed' });
+                }
+                req.session.error = 'Authentication failed. Please log in again.';
+                return res.redirect('/auth/login');
+            }
+        }
+        
+        // Validate that we have a leaderId
+        if (!leaderId) {
+            if (req.headers['content-type'] && req.headers['content-type'].includes('application/json')) {
+                return res.status(401).json({ success: false, error: 'Authentication required' });
+            }
+            req.session.error = 'Authentication required. Please log in again.';
+            return res.redirect('/auth/login');
+        }
+        
+        // Validate period exists and belongs to leader
+        const period = await Period.findOne({
+            _id: periodId,
+            leaderId: leaderId
+        });
+
+        if (!period) {
+            if (req.headers['content-type'] && req.headers['content-type'].includes('application/json')) {
+                return res.status(400).json({ success: false, error: 'Invalid period selected' });
+            }
             req.session.error = 'Invalid period selected';
             return res.redirect('/leader/dashboard');
         }
@@ -212,7 +336,7 @@ router.post(['/meal', '/meal/:id'], async (req, res) => {
         })).filter(ing => ing.name && ing.price >= 0);
 
         // Get leader's participants for validation
-        const leader = await User.findById(req.session.userId);
+        const leader = await User.findById(leaderId);
         const participantMap = new Map(
             leader.managedParticipants.map(p => [p._id.toString(), p.name])
         );
@@ -229,6 +353,9 @@ router.post(['/meal', '/meal/:id'], async (req, res) => {
             }).filter(p => p !== null) : [];
 
         if (formattedParticipants.length === 0) {
+            if (req.headers['content-type'] && req.headers['content-type'].includes('application/json')) {
+                return res.status(400).json({ success: false, error: 'At least one valid participant is required' });
+            }
             req.session.error = 'At least one valid participant is required';
             return res.redirect('/leader/dashboard');
         }
@@ -243,7 +370,7 @@ router.post(['/meal', '/meal/:id'], async (req, res) => {
             ingredients: formattedIngredients,
             participants: formattedParticipants,
             periodId,
-            leaderId: req.session.userId
+            leaderId: leaderId
         });
 
         await meal.save();
@@ -423,29 +550,94 @@ router.delete('/meal/:id', async (req, res) => {
 // Register new period
 router.post('/period', async (req, res) => {
     try {
-        const { leaderName, startDate, endDate, description } = req.body;
-
+        const { leaderName, startDate, endDate, description, idToken } = req.body;
+        console.log('Period creation request:', { leaderName, startDate, endDate, description, hasIdToken: !!idToken, sessionUserId: req.session.userId });
+        
+        let leaderId = req.session.userId;
+        
+        // If idToken is present, verify and get user
+        if (idToken) {
+            try {
+                console.log('Verifying idToken...');
+                const decodedToken = await admin.auth().verifyIdToken(idToken);
+                console.log('Token verified, UID:', decodedToken.uid, 'Email:', decodedToken.email);
+                
+                // Find user by googleId or email
+                let user = await User.findOne({ $or: [
+                    { googleId: decodedToken.uid },
+                    { email: decodedToken.email }
+                ] });
+                
+                if (!user) {
+                    console.log('User not found, creating new user...');
+                    // If not found, create a new user
+                    user = new User({
+                        username: decodedToken.name || decodedToken.email.split('@')[0],
+                        email: decodedToken.email,
+                        displayName: decodedToken.name || '',
+                        photoURL: decodedToken.picture || '',
+                        googleId: decodedToken.uid,
+                        managedParticipants: [],
+                        role: 'leader',
+                        password: await require('bcryptjs').hash(Math.random().toString(36), 10)
+                    });
+                    await user.save();
+                    console.log('New user created with ID:', user._id);
+                } else {
+                    console.log('Existing user found with ID:', user._id);
+                }
+                leaderId = user._id;
+            } catch (err) {
+                console.error('Error verifying idToken for period creation:', err);
+                req.session.error = 'Authentication failed. Please log in again.';
+                return res.redirect('/auth/login');
+            }
+        }
+        
+        console.log('Final leaderId:', leaderId);
+        
+        // Validate that we have a leaderId
+        if (!leaderId) {
+            console.error('No leaderId available - session userId:', req.session.userId, 'idToken provided:', !!idToken);
+            req.session.error = 'Authentication required. Please log in again.';
+            return res.redirect('/auth/login');
+        }
+        
         // Validate dates
         const start = new Date(startDate);
         const end = new Date(endDate);
-
         if (start > end) {
             req.session.error = 'End date must be after start date';
             return res.redirect('/leader/dashboard');
         }
-
+        
         const period = new Period({
             leaderName: leaderName.trim(),
             startDate: start,
             endDate: end,
             description: description ? description.trim() : '',
-            leaderId: req.session.userId,
+            leaderId: leaderId,
             isActive: true
         });
-
-        await period.save();
-        req.session.success = 'Period created successfully';
-        res.redirect('/leader/dashboard');
+        
+        console.log('Creating period with leaderId:', period.leaderId);
+        console.log('Period object before save:', {
+            leaderName: period.leaderName,
+            startDate: period.startDate,
+            endDate: period.endDate,
+            leaderId: period.leaderId,
+            isActive: period.isActive
+        });
+        
+        try {
+            await period.save();
+            console.log('Period saved successfully with ID:', period._id);
+            req.session.success = 'Period created successfully';
+            res.redirect('/leader/dashboard');
+        } catch (saveError) {
+            console.error('Error during period save:', saveError);
+            throw saveError; // Re-throw to be caught by outer catch
+        }
     } catch (error) {
         console.error('Period creation error:', error);
         req.session.error = formatErrors(error);

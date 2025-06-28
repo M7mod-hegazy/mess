@@ -39,22 +39,31 @@
         </div>
         <div class="card-body">
             <% if (selectedPeriod) { %>
-            <form action="/user/share/participants" method="POST" class="input-group mb-3">
-                <input type="hidden" name="periodId" value="<%= selectedPeriod._id %>">
-                <select class="form-select" name="name" required>
-                    <option value="" disabled selected>-- اختر من قائمة المشاركين --</option>
-                    <% if (locals.addableParticipants) { %>
-                        <% addableParticipants.forEach(p => { %>
-                            <option value="<%= p.name %>"><%= p.name %></option>
-                        <% }); %>
-                    <% } %>
-                </select>
-                <button class="btn btn-primary" type="submit" <%= !locals.addableParticipants || addableParticipants.length === 0 ? 'disabled' : '' %>>
-                    <i class="bi bi-plus"></i> إضافة
-                </button>
-            </form>
-            <% if (locals.addableParticipants && addableParticipants.length === 0) { %>
-               <p class="text-muted text-center small mb-0">تمت إضافة جميع المشاركين المتاحين إلى هذا الجدول.</p>
+            <% if (allManagedParticipants && allManagedParticipants.length === 0) { %>
+                <div class="alert alert-warning text-center">
+                    لا يوجد مشاركين مُدارين بعد. <br>
+                    <a href="/leader/dashboard" class="btn btn-primary btn-sm mt-2">إضافة مشارك جديد من لوحة القائد</a>
+                </div>
+            <% } else { %>
+                <form action="/user/share/participants" method="POST" class="input-group mb-3">
+                    <input type="hidden" name="periodId" value="<%= selectedPeriod._id %>">
+                    <select class="form-select" name="name" required>
+                        <option value="" disabled selected>-- اختر من قائمة المشاركين --</option>
+                        <% if (typeof addableParticipants !== 'undefined' && addableParticipants && addableParticipants.length > 0) { %>
+                            <% addableParticipants.forEach(p => { %>
+                                <option value="<%= p.name %>"><%= p.name %></option>
+                            <% }); %>
+                        <% } else { %>
+                            <option value="" disabled>لا يوجد مشاركين متاحين لإضافتهم (جميع المشاركين أضيفوا بالفعل).</option>
+                        <% } %>
+                    </select>
+                    <button class="btn btn-primary" type="submit" <%= !addableParticipants || addableParticipants.length === 0 ? 'disabled' : '' %>>
+                        <i class="bi bi-plus"></i> إضافة
+                    </button>
+                </form>
+                <% if (addableParticipants && addableParticipants.length === 0) { %>
+                   <p class="text-muted text-center small mb-0">تمت إضافة جميع المشاركين المتاحين إلى هذا الجدول. يمكنك إضافة مشاركين جدد من <a href='/leader/dashboard'>لوحة القائد</a>.</p>
+                <% } %>
             <% } %>
             <% } else { %>
                 <p class="text-muted">الرجاء تحديد فترة أولاً لإدارة المشاركين.</p>
@@ -62,7 +71,11 @@
         </div>
     </div>
 
-    <% if (locals.user && selectedPeriod && selectedPeriod.leaderId && user._id.toString() === selectedPeriod.leaderId.toString()) { %>
+    <%
+      const userIdStr = user && user._id ? user._id.toString() : '';
+      const leaderIdStr = selectedPeriod && selectedPeriod.leaderId ? selectedPeriod.leaderId.toString() : '';
+      const isOwner = userIdStr === leaderIdStr;
+    %>
     <div class="card share-table shadow-sm">
         <div class="card-body">
             <table class="table align-middle mb-0" id="shareTable">
@@ -76,19 +89,19 @@
                 </thead>
                 <tbody>
                     <% if (participants && participants.length > 0) { %>
-                        <% participants.forEach((p, idx) => { %>
-                        <tr>
-                            <td class="fw-bold"><%= p.name %></td>
-                            <td><input type="number" class="form-control share-num" data-row="<%= idx %>" placeholder="أدخل الرقم" value="<%= (p.numbers && p.numbers[0]) ? p.numbers[0] : '' %>"></td>
-                            <td><input type="text" class="form-control share-note" data-row="<%= idx %>" placeholder="إضافة ملاحظة" value="<%= p.note || '' %>"></td>
-                            <td>
-                                <form action="/user/share/participants/delete" method="POST" onsubmit="return confirm('هل أنت متأكد من حذف هذا المشارك من الجدول؟');">
-                                    <input type="hidden" name="periodId" value="<%= selectedPeriod._id %>">
-                                    <input type="hidden" name="name" value="<%= p.name %>">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-                                </form>
-                            </td>
-                        </tr>
+                        <% participants.forEach(function(p, idx) { %>
+                            <tr>
+                                <td class="fw-bold"><%= p.name %></td>
+                                <td><input type="number" class="form-control share-num" data-row="<%= idx %>" placeholder="أدخل الرقم" value="<%= p.num || '' %>"></td>
+                                <td><input type="text" class="form-control share-note" data-row="<%= idx %>" placeholder="إضافة ملاحظة" value="<%= p.note || '' %>"></td>
+                                <td>
+                                    <form action="/user/share/participants/delete" method="POST" onsubmit="return confirm('هل أنت متأكد من حذف هذا المشارك من الجدول؟');">
+                                        <input type="hidden" name="periodId" value="<%= selectedPeriod._id %>">
+                                        <input type="hidden" name="name" value="<%= p.name %>">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                </td>
+                            </tr>
                         <% }); %>
                     <% } else { %>
                         <tr>
@@ -110,9 +123,6 @@
             </div>
         </div>
     </div>
-    <% } else { %>
-    <div class="alert alert-warning mt-4">يمكن لمنشئ الفترة فقط عرض وتعديل تفاصيل المشاركة لهذه الفترة.</div>
-    <% } %>
 </div>
 <%- include('../footer') %>
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>

@@ -10,6 +10,85 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
   <!-- Custom Responsive CSS -->
   <link rel="stylesheet" href="/css/responsive.css">
+  <style>
+    /* Participants Accordion Styles */
+    .participants-accordion {
+      border: 1px solid #dee2e6;
+      border-radius: 0.375rem;
+      margin-bottom: 1rem;
+      background: white;
+    }
+    
+    .participants-accordion-header {
+      padding: 0.75rem 1rem;
+      background-color: #f8f9fa;
+      border-bottom: 1px solid #dee2e6;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background-color 0.2s ease;
+      border-radius: 0.375rem 0.375rem 0 0;
+    }
+    
+    .participants-accordion-header:hover {
+      background-color: #e9ecef;
+    }
+    
+    .participants-accordion-header.open {
+      background-color: #e9ecef;
+      border-bottom: 1px solid #dee2e6;
+    }
+    
+    .participants-accordion-header .icon {
+      transition: transform 0.3s ease;
+      font-size: 0.875rem;
+      color: #6c757d;
+    }
+    
+    .participants-accordion-body {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+      padding: 0 1rem;
+    }
+    
+    .participants-accordion-body.open {
+      max-height: 500px;
+      padding: 1rem;
+    }
+    
+    .participants-accordion-body .list-group {
+      margin-bottom: 0;
+    }
+    
+    .participants-accordion-body .list-group-item {
+      border-left: none;
+      border-right: none;
+      border-radius: 0;
+    }
+    
+    .participants-accordion-body .list-group-item:first-child {
+      border-top: none;
+    }
+    
+    .participants-accordion-body .list-group-item:last-child {
+      border-bottom: none;
+    }
+    
+    /* Responsive Interactive Background */
+    @media (max-width: 767px) {
+      #interactive-bg {
+        opacity: 0.5;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      #interactive-bg {
+        opacity: 0.3;
+      }
+    }
+  </style>
 </head>
 <body>
 <div id="interactive-bg"></div>
@@ -620,6 +699,11 @@
         const accBody = document.getElementById('participantsAccordionBody');
         const accIcon = document.getElementById('participantsAccordionIcon');
         if (accHeader && accBody && accIcon) {
+            // Initialize accordion as closed by default
+            accBody.classList.remove('open');
+            accHeader.classList.remove('open');
+            accIcon.style.transform = 'rotate(0deg)';
+            
             accHeader.onclick = function() {
                 const isOpen = accBody.classList.toggle('open');
                 accHeader.classList.toggle('open', isOpen);
@@ -653,21 +737,27 @@
         bg.style.background = 'transparent';
         particlesJS('interactive-bg', {
             particles: {
-                number: { value: 120, density: { enable: true, value_area: 800 } },
+                number: { 
+                    value: window.innerWidth < 768 ? 60 : 120, 
+                    density: { enable: true, value_area: 800 } 
+                },
                 color: { value: '#000' },
                 shape: { type: 'circle' },
                 opacity: { value: 0.3, random: true },
-                size: { value: 3, random: true },
+                size: { 
+                    value: window.innerWidth < 768 ? 2 : 3, 
+                    random: true 
+                },
                 line_linked: {
                     enable: true,
-                    distance: 120,
+                    distance: window.innerWidth < 768 ? 80 : 120,
                     color: '#000',
                     opacity: 0.18,
                     width: 1
                 },
                 move: {
                     enable: true,
-                    speed: 2,
+                    speed: window.innerWidth < 768 ? 1.5 : 2,
                     direction: 'none',
                     random: false,
                     straight: false,

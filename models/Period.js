@@ -58,15 +58,15 @@ periodSchema.pre('validate', function(next) {
         this.invalidate('endDate', 'End date must be after start date');
     }
     
-    // Validate dates are not in the past when creating a new period
-    if (this.isNew) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        if (this.startDate < today) {
-            this.invalidate('startDate', 'Start date cannot be in the past');
-        }
-    }
+    // Allow past start dates - removed validation that prevented past dates
+    // if (this.isNew) {
+    //     const today = new Date();
+    //     today.setHours(0, 0, 0, 0);
+    //     
+    //     if (this.startDate < today) {
+    //         this.invalidate('startDate', 'Start date cannot be in the past');
+    //     }
+    // }
     
     next();
 });
