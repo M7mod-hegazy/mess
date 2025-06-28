@@ -92,16 +92,24 @@ router.post('/authenticate-google', async (req, res) => {
     idToken = req.headers.authorization.split(' ')[1];
   }
   if (!idToken) {
+    console.log('No ID token provided in request');
+    console.log('Request body:', req.body);
+    console.log('Request headers:', req.headers);
     return res.status(401).send('No ID token provided!');
   }
+
+  console.log('Received ID token length:', idToken.length);
+  console.log('ID token starts with:', idToken.substring(0, 20) + '...');
 
   try {
     // Check if Firebase Admin is initialized
     if (!admin.apps.length) {
       console.log('Firebase Admin not initialized - skipping token verification');
+      console.log('Available apps:', admin.apps);
       return res.status(500).send('Firebase Admin not configured. Please check environment variables.');
     }
 
+    console.log('Firebase Admin is initialized, attempting to verify token...');
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     console.log('Successfully verified ID token! User:', decodedToken);
 
@@ -165,6 +173,11 @@ router.post('/authenticate-google', async (req, res) => {
     });
   } catch (error) {
     console.error('Error verifying ID token:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    });
     return res.status(401).send('Unauthorized: Invalid ID token.');
   }
 });
@@ -172,6 +185,42 @@ router.post('/authenticate-google', async (req, res) => {
 // Show Firebase test page
 router.get('/test-firebase', (req, res) => {
   res.render('auth/test-firebase');
+});
+
+// Test Firebase Admin configuration
+router.get('/test-firebase-admin', async (req, res) => {
+  try {
+    const admin = require('firebase-admin');
+    
+    const testResult = {
+      adminInitialized: admin.apps.length > 0,
+      appsCount: admin.apps.length,
+      environmentVariables: {
+        hasServiceAccount: !!process.env.FIREBASE_SERVICE_ACCOUNT,
+        serviceAccountLength: process.env.FIREBASE_SERVICE_ACCOUNT ? process.env.FIREBASE_SERVICE_ACCOUNT.length : 0
+      }
+    };
+    
+    if (admin.apps.length > 0) {
+      try {
+        // Try to get the default app
+        const app = admin.app();
+        testResult.defaultApp = {
+          name: app.name,
+          options: app.options
+        };
+      } catch (error) {
+        testResult.defaultAppError = error.message;
+      }
+    }
+    
+    res.json(testResult);
+  } catch (error) {
+    res.status(500).json({
+      error: error.message,
+      stack: error.stack
+    });
+  }
 });
 
 // Handle logout

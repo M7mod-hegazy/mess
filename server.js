@@ -1,6 +1,7 @@
 // Load environment variables from .env file
 require('dotenv').config();
 
+// Force new deployment - Firebase Admin uses environment variables
 const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
@@ -27,22 +28,28 @@ const admin = require('firebase-admin');
 // Check if we have Firebase service account credentials in environment variables
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
   try {
+    console.log('FIREBASE_SERVICE_ACCOUNT environment variable found');
     const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    console.log('Service account parsed successfully, project ID:', serviceAccount.project_id);
+    
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount)
     });
     console.log('Firebase Admin initialized with environment variables');
+    console.log('Available Firebase apps:', admin.apps.length);
   } catch (error) {
     console.error('Error parsing Firebase service account:', error);
+    console.error('Service account content preview:', process.env.FIREBASE_SERVICE_ACCOUNT.substring(0, 100) + '...');
     console.log('Firebase Admin not initialized - some features may not work');
   }
 } else {
   console.log('FIREBASE_SERVICE_ACCOUNT environment variable not found - Firebase Admin not initialized');
+  console.log('Available environment variables:', Object.keys(process.env).filter(key => key.includes('FIREBASE')));
 }
 
 // Configure CORS
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' ? 'your-production-domain.com' : 'http://localhost:3001', // Allow requests from specific origin
+  origin: process.env.NODE_ENV === 'production' ? ['https://mes-ruddy.vercel.app', 'https://mes.vercel.app'] : ['http://localhost:3001', 'http://localhost:3000'], // Allow requests from specific origins
   credentials: true, // Allow credentials (cookies) to be sent with requests
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -84,8 +91,8 @@ app.use(session({
   store: MongoStore.create({ mongoUrl: MONGO_URI }),
   cookie: {
     httpOnly: true,
-    secure: false, // Set to false for localhost development
-    sameSite: 'lax', // Use 'lax' for localhost
+    secure: process.env.NODE_ENV === 'production', // Set to true in production
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Use 'none' for production with secure: true
     maxAge: 7 * 24 * 60 * 60 * 1000 // Session expires in 7 days
   }
 }));
