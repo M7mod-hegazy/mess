@@ -24,6 +24,11 @@ router.get(['/period/:id', '/periods/:id'], async (req, res) => {
     try {
         const period = await Period.findById(req.params.id)
             .populate('leaderId');  // Make sure to populate leaderId
+        
+        if (!period) {
+            return res.status(404).send('Period not found');
+        }
+        
         const meals = await Meal.find({ periodId: req.params.id }).sort({ date: 1 });
         const periodStats = await period.calculatePeriodStatistics();
         
@@ -36,7 +41,9 @@ router.get(['/period/:id', '/periods/:id'], async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching period details:', error);
-        res.status(500).send('Server error');
+        console.error('Period ID:', req.params.id);
+        console.error('Error stack:', error.stack);
+        res.status(500).send('Server error: ' + error.message);
     }
 });
 

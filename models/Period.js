@@ -142,7 +142,9 @@ periodSchema.methods.calculatePeriodStatistics = async function() {
             averageParticipantsPerMeal: 0
         },
         firstCost
-    };    // Calculate per-participant statistics
+    };
+    
+    // Calculate per-participant statistics
     meals.forEach(meal => {
         // Calculate normal costs
         let mealNormalCost = meal.ingredients
@@ -186,7 +188,9 @@ periodSchema.methods.calculatePeriodStatistics = async function() {
                 participantStats.mealsWithOtherCosts++;
             }
         });
-    });    // Calculate final statistics per participant
+    });
+    
+    // Calculate final statistics per participant
     Object.keys(stats.participantStats).forEach(name => {
         const participant = stats.participantStats[name];
         

@@ -142,7 +142,7 @@
                                         <div class="d-flex justify-content-between align-items-center mb-3"><h6 class="mb-0">المكونات</h6><button type="button" class="btn btn-outline-primary btn-sm" onclick="addIngredient()"><i class="bi bi-plus"></i> إضافة مكون</button></div>
                                         <div id="ingredientsList"></div>
                                         <div class="card bg-light mt-3">
-                                            <div class="card-body"><div class="row text-center"><div class="col-md-4"><label class="text-muted d-block">عادي</label><span class="h5">$<span id="normalIngredientsTotal">0.00</span></span></div><div class="col-md-4"><label class="text-muted d-block">أخرى</label><span class="h5">$<span id="otherIngredientsTotal">0.00</span></span></div><div class="col-md-4"><label class="text-muted d-block">الإجمالي</label><span class="h5">$<span id="totalCost">0.00</span></span></div></div></div>
+                                            <div class="card-body"><div class="row text-center"><div class="col-md-4"><label class="text-muted d-block">عادي</label><span class="h5">$<span id="normalIngredientsTotal">0.00</span></span></div><div class="col-md-4"><label class="text-muted d-block">نثريات</label><span class="h5">$<span id="otherIngredientsTotal">0.00</span></span></div><div class="col-md-4"><label class="text-muted d-block">الإجمالي</label><span class="h5">$<span id="totalCost">0.00</span></span></div></div></div>
                                         </div>
                                     </div>
                                     <div class="mb-4">
@@ -343,7 +343,7 @@
                     <div class="row g-2 align-items-center">
                         <div class="col-md-4"><input type="text" class="form-control form-control-sm" name="ingredients[${ingredientIndex}][name]" placeholder="اسم المكون" required></div>
                         <div class="col-md-3"><div class="input-group input-group-sm"><span class="input-group-text">$</span><input type="number" class="form-control ingredient-price-add" name="ingredients[${ingredientIndex}][price]" placeholder="السعر" step="0.01" min="0" oninput="updateCostTotals()" required></div></div>
-                        <div class="col-md-3"><select class="form-select form-select-sm ingredient-type-add" name="ingredients[${ingredientIndex}][ingredientType]" onchange="updateCostTotals()"><option value="normal" selected>عادي</option><option value="other">أخرى</option></select></div>
+                        <div class="col-md-3"><select class="form-select form-select-sm ingredient-type-add" name="ingredients[${ingredientIndex}][ingredientType]" onchange="updateCostTotals()"><option value="normal" selected>عادي</option><option value="other">نثريات</option></select></div>
                         <div class="col-md-2 text-end"><button type="button" class="btn btn-outline-danger btn-sm" onclick="removeDynamicRow(this, updateCostTotals)"><i class="bi bi-trash"></i></button></div>
                     </div>
                 </div>`;
@@ -463,7 +463,7 @@
                     <div class="row g-2 align-items-center">
                         <div class="col-md-4"><input type="text" class="form-control" name="ingredients[${editIngredientIndex}][name]" placeholder="اسم المكون" value="${ingredient ? ingredient.name : ''}" required></div>
                         <div class="col-md-3"><input type="number" step="0.01" min="0" class="form-control" name="ingredients[${editIngredientIndex}][price]" placeholder="السعر" value="${ingredient ? ingredient.price.toFixed(2) : ''}" required></div>
-                        <div class="col-md-3"><select class="form-select" name="ingredients[${editIngredientIndex}][ingredientType]" required><option value="normal" ${ingredient && ingredient.ingredientType === 'normal' ? 'selected' : ''}>عادي</option><option value="other" ${ingredient && ingredient.ingredientType === 'other' ? 'selected' : ''}>أخرى</option></select></div>
+                        <div class="col-md-3"><select class="form-select" name="ingredients[${editIngredientIndex}][ingredientType]" required><option value="normal" ${ingredient && ingredient.ingredientType === 'normal' ? 'selected' : ''}>عادي</option><option value="other" ${ingredient && ingredient.ingredientType === 'other' ? 'selected' : ''}>نثريات</option></select></div>
                         <div class="col-md-2 text-end"><button type="button" class="btn btn-outline-danger btn-sm" onclick="removeDynamicRow(this)"><i class="bi bi-trash"></i></button></div>
                     </div>
                 </div>`;
@@ -648,7 +648,7 @@
                         <h6 class="card-subtitle mb-2 text-muted"><i class="bi bi-cash me-1"></i> تكلفة الوجبة</h6>
                         <div class="d-flex gap-2 flex-wrap">
                             <span class="badge bg-secondary">عادي: $${meal.normalTotalCost?.toFixed(2) || '0.00'}</span>
-                            <span class="badge bg-info">أخرى: $${meal.otherTotalCost?.toFixed(2) || '0.00'}</span>
+                            <span class="badge bg-info">نثريات: $${meal.otherTotalCost?.toFixed(2) || '0.00'}</span>
                             <span class="badge bg-primary">إجمالي: $${meal.totalCost?.toFixed(2) || '0.00'}</span>
                         </div>
                     </div>

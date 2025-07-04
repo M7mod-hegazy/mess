@@ -41,7 +41,7 @@
             <div class="total-box">
                 <h5>ملخص التكلفة</h5>
                 <p>التكلفة العادية: $<span id="normalTotal">0.00</span></p>
-                <p>التكلفة الأخرى: $<span id="otherTotal">0.00</span></p>
+                <p>التكلفة النثريات: $<span id="otherTotal">0.00</span></p>
                 <p>التكلفة الإجمالية: $<span id="grandTotal">0.00</span></p>
                 <p>التكلفة للشخص الواحد: $<span id="perPersonCost">0.00</span></p>
             </div>
@@ -56,14 +56,18 @@
             <button type="submit" class="btn btn-primary">حفظ الوجبة</button>
         </form>
     </div>
+    
+    <!-- Data initialization -->
+    <div id="initData" 
+         data-participants='<%- typeof participants !== 'undefined' ? JSON.stringify(participants) : '[]' %>'
+         data-meal='<%- meal ? JSON.stringify(meal) : 'null' %>'
+         style="display: none;"></div>
+    
     <script>
         // Initialize data before loading meal-form.js
-        window.participants = <%- typeof participants !== 'undefined' ? JSON.stringify(participants) : '[]' %>;
-        <% if (meal) { %>
-        window.existingMeal = <%- JSON.stringify(meal) %>;
-        <% } else { %>
-            window.existingMeal = null;
-        <% } %>
+        const initData = document.getElementById('initData');
+        window.participants = JSON.parse(initData.dataset.participants);
+        window.existingMeal = initData.dataset.meal !== 'null' ? JSON.parse(initData.dataset.meal) : null;
     </script>
     <script src="/js/meal-form.js"></script>
 `) %>

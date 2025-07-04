@@ -30,7 +30,7 @@ function addIngredient() {
         <div class="col-3">
             <select class="form-select" name="ingredients[${ingredientCounter}][ingredientType]" onchange="updateTotals()">
                 <option value="normal">عادي</option>
-                <option value="other">أخرى</option>
+                <option value="other">نثريات</option>
             </select>
         </div>
         <div class="col-1">
