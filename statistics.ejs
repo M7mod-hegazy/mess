@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>الإحصائيات - نظام إدارة الوجبات</title>
+  <!-- Bootstrap CSS RTL -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <!-- Custom Responsive CSS -->
+  <link rel="stylesheet" href="/css/responsive.css">
+</head>
+<body style="display:flex;flex-direction:column;min-height:100vh;">
+<div id="interactive-bg"></div>
+<%- include('../navbar', { activePage: 'statistics' }) %>
+<div class="main-content flex-grow-1 container-fluid py-4">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <h1 class="mb-0"><i class="bi bi-bar-chart d-none d-sm-inline me-2"></i>الإحصائيات والرسوم البيانية</h1>
+    </div>
+    <form class="mb-4" id="periodForm" method="get" action="/user/statistics">
+        <div class="row justify-content-center">
+            <div class="col-sm-10 col-md-8 col-lg-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <label for="periodSelect" class="form-label fw-bold">اختر الفترة</label>
+                        <select class="form-select" id="periodSelect" name="period">
+                            <% periods.forEach(period => { %>
+                                <option value="<%= period._id %>" <%= period._id.toString() === (selectedPeriodId || (activePeriod && activePeriod._id.toString())) ? 'selected' : '' %>>
+                                    فترة <%= period.leaderName %> (<%= new Date(period.startDate).toLocaleDateString() %> - <%= new Date(period.endDate).toLocaleDateString() %>)
+                                    <% if (activePeriod && period._id.toString() === activePeriod._id.toString()) { %> (نشط) <% } %>
+                                </option>
+                            <% }); %>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+    <!-- 1. Total Normal, Other, Total for all Participants -->
+    <div class="stats-section card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+                <h5 class="mb-0"><i class="bi bi-cash-stack me-2"></i>إجمالي التكاليف (جميع المشاركين)</h5>
+                <select id="costTypeSelect" class="form-select" style="max-width: 200px;">
+                    <option value="all">الكل</option>
+                    <option value="normal">عادي</option>
+                    <option value="other">نثريات</option>
+                    <option value="total">الإجمالي</option>
+                </select>
+            </div>
+        </div>
+        <div class="card-body p-2 p-md-3">
+            <div class="chart-container" style="position: relative; height:50vh; max-height: 300px;">
+                <canvas id="totalCostsChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 2. Ingredient Prices -->
+    <div class="stats-section card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+                <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>أسعار المكونات مع مرور الوقت</h5>
+                <select id="ingredientSelect" class="form-select" style="max-width: 200px;">
+                    <option value="all">جميع المكونات</option>
+                </select>
+            </div>
+        </div>
+        <div class="card-body p-2 p-md-3">
+            <div class="chart-container" style="position: relative; height:50vh; max-height: 300px;">
+                <canvas id="ingredientChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 3. Per-Participant Daily Cost -->
+    <div class="stats-section card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+                <h5 class="mb-0"><i class="bi bi-person-lines-fill me-2"></i>التكلفة اليومية للمشارك</h5>
+                <select id="participantSelect" class="form-select" style="max-width: 200px;">
+                    <option value="all">جميع المشاركين</option>
+                </select>
+            </div>
+        </div>
+        <div class="card-body p-2 p-md-3">
+            <div class="chart-container" style="position: relative; height:50vh; max-height: 300px;">
+                <canvas id="participantDailyChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+
+    
+    <!-- No Data Message -->
+    <div id="noDataMessage" class="alert alert-info d-none">
+        <i class="bi bi-info-circle me-2"></i>
+        لا توجد بيانات كافية لعرض الإحصائيات لهذه الفترة.
+    </div>
+</div>
+<%- include('../footer') %>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .stats-section { margin-bottom: 2rem; }
+    .main-content { flex: 1 0 auto; }
+</style>
+<script>
+// These variables should be rendered from the backend
+const statsData = JSON.parse('<%- JSON.stringify(statsData || {}) %>');
+const ingredientList = statsData.ingredients || [];
+const participantList = statsData.participants || [];
+const ingredientPricesOverTime = statsData.ingredientPricesOverTime || {};
+const totalCostsOverTime = statsData.totalCostsOverTime || [];
+
+// Check if we have data to display
+const hasData = totalCostsOverTime.length > 0;
+if (!hasData) {
+    document.getElementById('noDataMessage').classList.remove('d-none');
+    document.querySelectorAll('.stats-section').forEach(section => {
+        section.classList.add('d-none');
+    });
+}
+
+// 1. Total Costs Over Time Chart
+const costTypeSelect = document.getElementById('costTypeSelect');
+let totalCostsChart;
+function renderTotalCostsChart(type) {
+    const ctx = document.getElementById('totalCostsChart').getContext('2d');
+    let datasets = [];
+    if (type === 'all') {
+        datasets = [
+            {
+                label: 'عادي',
+                data: totalCostsOverTime.map(d => d.normal),
+                borderColor: '#6c757d',
+                backgroundColor: 'rgba(108,117,125,0.1)',
+                fill: true,
+                tension: 0.1
+            },
+            {
+                label: 'نثريات',
+                data: totalCostsOverTime.map(d => d.other),
+                borderColor: '#0dcaf0',
+                backgroundColor: 'rgba(13,202,240,0.1)',
+                fill: true,
+                tension: 0.1
+            },
+            {
+                label: 'الإجمالي',
+                data: totalCostsOverTime.map(d => d.total),
+                borderColor: '#0d6efd',
+                backgroundColor: 'rgba(13,110,253,0.1)',
+                fill: true,
+                tension: 0.1
+            }
+        ];
+    } else {
+        let label, color;
+        if (type === 'normal') { label = 'عادي'; color = '#6c757d'; }
+        if (type === 'other') { label = 'نثريات'; color = '#0dcaf0'; }
+        if (type === 'total') { label = 'الإجمالي'; color = '#0d6efd'; }
+        datasets = [{
+            label,
+            data: totalCostsOverTime.map(d => d[type]),
+            borderColor: color,
+            backgroundColor: color + '33',
+            fill: true,
+            tension: 0.1
+        }];
+    }
+    if (totalCostsChart) totalCostsChart.destroy();
+    totalCostsChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: totalCostsOverTime.map(d => d.date),
+            datasets
+        },
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false,
+            plugins: { 
+                legend: { 
+                    display: true,
+                    position: window.innerWidth < 768 ? 'bottom' : 'top',
+                    labels: {
+                        boxWidth: 12,
+                        padding: 10,
+                        font: {
+                            size: window.innerWidth < 768 ? 10 : 12
+                        }
+                    }
+                } 
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 45,
+                        font: {
+                            size: window.innerWidth < 768 ? 8 : 10
+                        }
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        font: {
+                            size: window.innerWidth < 768 ? 8 : 10
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    // Resize chart when window resizes
+    window.addEventListener('resize', () => {
+        if (totalCostsChart) {
+            totalCostsChart.options.plugins.legend.position = window.innerWidth < 768 ? 'bottom' : 'top';
+            totalCostsChart.options.plugins.legend.labels.font.size = window.innerWidth < 768 ? 10 : 12;
+            totalCostsChart.options.scales.x.ticks.font.size = window.innerWidth < 768 ? 8 : 10;
+            totalCostsChart.options.scales.y.ticks.font.size = window.innerWidth < 768 ? 8 : 10;
+            totalCostsChart.update();
+        }
+    });
+}
+costTypeSelect.addEventListener('change', e => renderTotalCostsChart(e.target.value));
+renderTotalCostsChart('all');
+
+// 2. Ingredient Prices Over Time Chart
+const ingredientSelect = document.getElementById('ingredientSelect');
+ingredientList.forEach(ing => {
+    const opt = document.createElement('option');
+    opt.value = ing.name;
+    opt.textContent = ing.name;
+    ingredientSelect.appendChild(opt);
+});
+let ingredientChart;
+function renderIngredientChart(selected) {
+    const ctx = document.getElementById('ingredientChart').getContext('2d');
+    let datasets = [];
+    if (selected === 'all') {
+        // Generate consistent colors for each ingredient
+        const colorMap = {};
+        ingredientList.forEach((ing, index) => {
+            // Use a more controlled color palette instead of random colors
+            const colors = ['#0d6efd', '#6610f2', '#6f42c1', '#d63384', '#dc3545', '#fd7e14', '#ffc107', '#198754', '#20c997', '#0dcaf0'];
+            colorMap[ing.name] = colors[index % colors.length];
+        });
+        
+        datasets = ingredientList.map(ing => ({
+            label: ing.name,
+            data: (ingredientPricesOverTime[ing.name] || []).map(d => d.price),
+            borderColor: colorMap[ing.name],
+            backgroundColor: colorMap[ing.name] + '33',
+            fill: true,
+            tension: 0.1
+        }));
+    } else {
+        datasets = [{
+            label: selected,
+            data: (ingredientPricesOverTime[selected] || []).map(d => d.price),
+            borderColor: '#0d6efd',
+            backgroundColor: 'rgba(13,110,253,0.1)',
+            fill: true,
+            tension: 0.1
+        }];
+    }
+    if (ingredientChart) ingredientChart.destroy();
+    ingredientChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: (ingredientPricesOverTime[selected === 'all' ? ingredientList[0]?.name : selected] || []).map(d => d.date),
+            datasets
+        },
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false,
+            plugins: { 
+                legend: { 
+                    display: true,
+                    position: window.innerWidth < 768 ? 'bottom' : 'top',
+                    labels: {
+                        boxWidth: 12,
+                        padding: 10,
+                        font: {
+                            size: window.innerWidth < 768 ? 10 : 12
+                        }
+                    }
+                } 
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 45,
+                        font: {
+                            size: window.innerWidth < 768 ? 8 : 10
+                        }
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        font: {
+                            size: window.innerWidth < 768 ? 8 : 10
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    // Resize chart when window resizes
+    window.addEventListener('resize', () => {
+        if (ingredientChart) {
+            ingredientChart.options.plugins.legend.position = window.innerWidth < 768 ? 'bottom' : 'top';
+            ingredientChart.options.plugins.legend.labels.font.size = window.innerWidth < 768 ? 10 : 12;
+            ingredientChart.options.scales.x.ticks.font.size = window.innerWidth < 768 ? 8 : 10;
+            ingredientChart.options.scales.y.ticks.font.size = window.innerWidth < 768 ? 8 : 10;
+            ingredientChart.update();
+        }
+    });
+}
+ingredientSelect.addEventListener('change', e => renderIngredientChart(e.target.value));
+renderIngredientChart('all');
+
+// 3. Participant Daily Cost Chart
+const participantSelect = document.getElementById('participantSelect');
+participantList.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.name;
+    opt.textContent = p.name;
+    participantSelect.appendChild(opt);
+});
+let participantDailyChart;
+function renderParticipantDailyChart(selected) {
+    let data;
+    if (selected === 'all') {
+        // Show average daily cost for all participants
+        data = statsData.dailyCostsAll || [];
+    } else {
+        // Show daily cost for selected participant
+        data = (statsData.dailyCostsByParticipant && statsData.dailyCostsByParticipant[selected]) || [];
+    }
+    const ctx = document.getElementById('participantDailyChart').getContext('2d');
+    if (participantDailyChart) participantDailyChart.destroy();
+    participantDailyChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.map(d => d.date),
+            datasets: [{
+                label: selected === 'all' ? 'متوسط التكلفة اليومية' : 'التكلفة اليومية',
+                data: data.map(d => d.cost),
+                backgroundColor: '#0dcaf0',
+                borderColor: '#0dcaf0',
+                backgroundColor: 'rgba(13,202,240,0.1)',
+                fill: true,
+                tension: 0.1
+            }]
+        },
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false,
+            plugins: { 
+                legend: { 
+                    display: true,
+                    position: window.innerWidth < 768 ? 'bottom' : 'top',
+                    labels: {
+                        boxWidth: 12,
+                        padding: 10,
+                        font: {
+                            size: window.innerWidth < 768 ? 10 : 12
+                        }
+                    }
+                } 
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 45,
+                        font: {
+                            size: window.innerWidth < 768 ? 8 : 10
+                        }
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        font: {
+                            size: window.innerWidth < 768 ? 8 : 10
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    // Resize chart when window resizes
+    window.addEventListener('resize', () => {
+        if (participantDailyChart) {
+            participantDailyChart.options.plugins.legend.position = window.innerWidth < 768 ? 'bottom' : 'top';
+            participantDailyChart.options.plugins.legend.labels.font.size = window.innerWidth < 768 ? 10 : 12;
+            participantDailyChart.options.scales.x.ticks.font.size = window.innerWidth < 768 ? 8 : 10;
+            participantDailyChart.options.scales.y.ticks.font.size = window.innerWidth < 768 ? 8 : 10;
+            participantDailyChart.update();
+        }
+    });
+}
+participantSelect.addEventListener('change', e => renderParticipantDailyChart(e.target.value));
+renderParticipantDailyChart('all');
+
+// Period select reload
+document.getElementById('periodSelect').addEventListener('change', function() {
+    document.getElementById('periodForm').submit();
+});
+
+// Adjust chart container heights based on screen size
+function adjustChartContainers() {
+    const chartContainers = document.querySelectorAll('.chart-container');
+    const height = window.innerWidth < 768 ? '250px' : '300px';
+    
+    chartContainers.forEach(container => {
+        container.style.height = height;
+    });
+    
+    // Force charts to resize
+    if (totalCostsChart) totalCostsChart.resize();
+    if (ingredientChart) ingredientChart.resize();
+    if (participantDailyChart) participantDailyChart.resize();
+}
+
+// Initial adjustment and listen for resize events
+adjustChartContainers();
+window.addEventListener('resize', adjustChartContainers);
+</script>
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+<script src="/js/particles-bg.js"></script>
+<script>
+  particlesJS('interactive-bg', {
+    particles: {
+      number: { value: 120, density: { enable: true, value_area: 800 } },
+      color: { value: '#000' },
+      shape: { type: 'circle' },
+      opacity: { value: 0.3, random: true },
+      size: { value: 3, random: true },
+      line_linked: {
+        enable: true,
+        distance: 120,
+        color: '#000',
+        opacity: 0.18,
+        width: 1
+      },
+      move: {
+        enable: true,
+        speed: 2,
+        direction: 'none',
+        random: false,
+        straight: false,
+        out_mode: 'out',
+        bounce: false,
+        attract: { enable: true, rotateX: 600, rotateY: 1200 }
+      }
+    },
+    interactivity: {
+      detect_on: 'canvas',
+      events: {
+        onhover: { enable: true, mode: ['grab', 'bubble', 'repulse'] },
+        onclick: { enable: true, mode: 'push' },
+        resize: true
+      },
+      modes: {
+        grab: { distance: 140, line_linked: { opacity: 0.35 } },
+        bubble: { distance: 200, size: 6, duration: 2, opacity: 0.6, speed: 3 },
+        repulse: { distance: 100, duration: 0.4 },
+        push: { particles_nb: 4 }
+      }
+    },
+    retina_detect: true
+  });
+</script>
+</body>
+</html>

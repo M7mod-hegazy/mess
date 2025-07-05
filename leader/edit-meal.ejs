@@ -1,0 +1,73 @@
+<% layout('layout') -%>
+<%- block('head').append(`
+    <title><%= meal ? 'تعديل' : 'إضافة' %> وجبة</title>
+    <style>
+        .total-box { background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 15px 0; }
+    </style>
+
+
+`) %>
+
+<%- block('body').append(`
+    <div class="container mt-4">
+        <h1><%= meal ? 'تعديل' : 'إضافة' %> وجبة</h1>
+        
+        <form method="POST" class="needs-validation" novalidate>
+            <!-- Basic Info -->
+            <div class="mb-3">
+                <label class="form-label">التاريخ</label>
+                <input type="date" name="date" class="form-control" required
+                       value="<%= meal ? meal.date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0] %>">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">النوع</label>
+                <select name="type" class="form-control" required>
+                    <option value="breakfast" <%= meal?.type === 'breakfast' ? 'selected' : '' %>>فطور</option>
+                    <option value="lunch" <%= meal?.type === 'lunch' ? 'selected' : '' %>>غداء</option>
+                    <option value="dinner" <%= meal?.type === 'dinner' ? 'selected' : '' %>>عشاء</option>
+                    <option value="other" <%= meal?.type === 'other' ? 'selected' : '' %>>أخرى</option>
+                </select>
+            </div>
+
+            <!-- Ingredients -->
+            <div class="mb-3">
+                <label class="form-label">المكونات</label>
+                <div id="ingredientList"></div>
+                <button type="button" class="btn btn-secondary" onclick="addIngredient()">إضافة مكون</button>
+            </div>
+
+            <!-- Totals -->
+            <div class="total-box">
+                <h5>ملخص التكلفة</h5>
+                <p>التكلفة العادية: $<span id="normalTotal">0.00</span></p>
+                <p>التكلفة النثريات: $<span id="otherTotal">0.00</span></p>
+                <p>التكلفة الإجمالية: $<span id="grandTotal">0.00</span></p>
+                <p>التكلفة للشخص الواحد: $<span id="perPersonCost">0.00</span></p>
+            </div>
+
+            <!-- Participants -->
+            <div class="mb-3">
+                <label class="form-label">المشاركون</label>
+                <div id="participantsList"></div>
+                <button type="button" class="btn btn-secondary" onclick="addParticipant()">إضافة مشارك</button>
+            </div>
+
+            <button type="submit" class="btn btn-primary">حفظ الوجبة</button>
+        </form>
+    </div>
+    
+    <!-- Data initialization -->
+    <div id="initData" 
+         data-participants='<%- typeof participants !== 'undefined' ? JSON.stringify(participants) : '[]' %>'
+         data-meal='<%- meal ? JSON.stringify(meal) : 'null' %>'
+         style="display: none;"></div>
+    
+    <script>
+        // Initialize data before loading meal-form.js
+        const initData = document.getElementById('initData');
+        window.participants = JSON.parse(initData.dataset.participants);
+        window.existingMeal = initData.dataset.meal !== 'null' ? JSON.parse(initData.dataset.meal) : null;
+    </script>
+    <script src="/js/meal-form.js"></script>
+`) %>
